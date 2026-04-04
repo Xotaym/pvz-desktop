@@ -114,7 +114,7 @@
 </p>
 
 ```
-git clone https://github.com/your-repo/pvz-desktop.git
+git clone https://github.com/Xotaym/pvz-desktop.git
 cd pvz-desktop
 pip install -r requirements.txt
 python server.py
@@ -162,7 +162,7 @@ A fan-made Plants vs Zombies made by Russian developer where the game is played 
 
 **Quick start:**
 ```
-git clone https://github.com/your-repo/pvz-desktop.git
+git clone https://github.com/Xotaym/pvz-desktop.git
 cd pvz-desktop
 pip install -r requirements.txt
 python server.py
