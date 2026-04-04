@@ -1,0 +1,10 @@
+# Plants VS Zombies Desktop — Python зависимости
+# Установка: pip install -r requirements.txt
+
+# Обязательные
+Pillow>=10.0.0          # Обработка изображений (PIL)
+pywebview>=5.0          # Оконное приложение (вместо Electron)
+pywin32>=306            # Windows API: иконки рабочего стола, win32gui/win32api
+
+# Сборка в .exe
+pyinstaller>=6.0        # Упаковка в один исполняемый файл

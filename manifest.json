@@ -1,0 +1,33 @@
+{
+  "name": "Plants VS Zombies Desktop",
+  "version": "0.2.0",
+  "description": "PvZ прямо на вашем рабочем столе",
+  "author": "Xotaym",
+  "grid": {
+    "cols": 9,
+    "rows": 5,
+    "cellWidth": 110,
+    "cellHeight": 110
+  },
+  "waves": 5,
+  "startSun": 150,
+  "sunInterval": [4000, 7000],
+  "plants": {
+    "sunflower": { "cost": 50, "file": "подсолнух.png" },
+    "peashooter": { "cost": 75, "file": "горохострел.png" },
+    "folder_magnet": { "cost": 75, "file": "папка-магнит.png" },
+    "siamese_peashooter": { "cost": 125, "file": "сиамский-горохострел.png" },
+    "xsas_mushroom": { "cost": 150, "file": "xsas-гриб.png" },
+    "sun_mushroom": { "cost": 25, "file": "солнце-гриб.png", "nightOnly": true },
+    "unarchiver": { "cost": 50, "file": "разархиватор.png", "isItem": true }
+  },
+  "zombies": {
+    "zombie": { "hp": [5, 7], "file": "зомби.webp", "speed": 0.6 },
+    "zombie_copy": { "hp": [5, 7], "file": "зомби-копия.webp", "speed": 0.6 },
+    "system_zombie": { "hp": [5, 7], "file": "систем-зомби.png", "speed": 0.6, "hasSystemFile": true },
+    "hdd_zombie": { "hp": [10, 12], "file": "хдд-зомби.png", "speed": 0.4, "armorHits": 3 },
+    "ssd_zombie": { "hp": [3, 5], "file": "ссд-зомби.png", "speed": 0.8, "armorHits": 2 },
+    "winrar_zombie": { "hp": [5, 7], "file": "winrar-зомби.png", "speed": 0.5, "canArchive": true },
+    "your_death": { "hp": 999, "file": "ваша-смерть.png", "speed": 0.3, "isBoss": true }
+  }
+}
