@@ -50,12 +50,16 @@ async function loadBootData() {
   }
 }
 
+async function preloadBootData() {
+  window._bootData = await loadBootData();
+}
+
 async function runBootSequence(onComplete) {
   const screen = document.getElementById('screen-boot');
   const iconsContainer = document.getElementById('boot-icons');
   const barFill = document.querySelector('.defender-bar-fill');
 
-  const desktopData = await loadBootData();
+  const desktopData = window._bootData || await loadBootData();
 
   if (desktopData && desktopData.wallpaper) {
     screen.style.backgroundImage = `url(data:image/png;base64,${desktopData.wallpaper})`;
@@ -129,7 +133,10 @@ async function runBootSequence(onComplete) {
   const rows = [...new Set(iconEls.map(el => el.dataset.row))].sort((a, b) => Number(a) - Number(b));
   for (const row of rows) {
     const rowIcons = iconEls.filter(el => el.dataset.row === row);
-    rowIcons.forEach(el => el.classList.add('erasing'));
+    rowIcons.forEach(el => {
+      el.style.animation = '';
+      el.classList.add('erasing');
+    });
     await delay(400);
   }
 
@@ -214,4 +221,4 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-window.Boot = { runBootSequence };
+window.Boot = { runBootSequence, preloadBootData };

@@ -1,5 +1,43 @@
 "use strict";
 
+/* ─── GameLog: comprehensive logging system ─── */
+const GameLog = {
+  _buffer: [],
+  _flushInterval: null,
+  _maxBuffer: 30,
+  _flushMs: 2000,
+
+  init() {
+    this._flushInterval = setInterval(() => this.flush(), this._flushMs);
+    this.log('SYSTEM', 'GameLog initialized');
+  },
+
+  log(category, msg) {
+    const ts = new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+    const line = `[${ts}] [${category}] ${msg}`;
+    this._buffer.push(line);
+    if (this._buffer.length >= this._maxBuffer) this.flush();
+  },
+
+  flush() {
+    if (this._buffer.length === 0) return;
+    const lines = this._buffer.splice(0);
+    fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lines }),
+    }).catch(() => {});
+  },
+
+  clear() {
+    return fetch('/api/log/clear', { method: 'POST' })
+      .then(r => r.json())
+      .catch(() => ({ ok: false }));
+  },
+};
+
+window.GameLog = GameLog;
+
 const GRID_COLS  = 9;
 const GRID_ROWS  = 5;
 const CELL_W     = 110;
@@ -158,6 +196,7 @@ function canPlacePlant(type, col, row) {
 function tryPlacePlant(type, col, row) {
   if (!type || !PLANTS[type]) return false;
   if (State.sun < PLANTS[type].cost) {
+    GameLog.log('PLANT', `Not enough sun for ${type} (have ${State.sun}, need ${PLANTS[type].cost})`);
     flashSunCounter();
     return false;
   }
@@ -166,6 +205,7 @@ function tryPlacePlant(type, col, row) {
     const plant = State.plants[row]?.[col];
     if (!plant || !plant.archived) return false;
     State.sun -= PLANTS[type].cost;
+    GameLog.log('PLANT', `Unarchived plant at [${col},${row}], sun=${State.sun}`);
     unarchivePlant(col, row);
     spawnParticles(plant.el.offsetLeft + CELL_W/2, plant.el.offsetTop + CELL_H/2, '#f39c12', 8);
     UI.updateSun();
@@ -176,6 +216,7 @@ function tryPlacePlant(type, col, row) {
   if (!canPlacePlant(type, col, row)) return false;
   placePlant(type, col, row);
   State.sun -= PLANTS[type].cost;
+  GameLog.log('PLANT', `Placed ${type} at [${col},${row}], sun=${State.sun}`);
   UI.updateSun();
   UI.updatePlantBar();
   return true;
@@ -212,7 +253,7 @@ const PLANTS = {
     cooldown: 6000,
     displayName: 'папка-магнит.png',
     attractRadius: 3,
-    attractInterval: 6000,
+    attractInterval: 2000,
   },
   siamese_peashooter: {
     name: 'сиамский-горохострел.png',
@@ -292,9 +333,12 @@ function placePlant(type, col, row) {
   } else if (type === 'folder_magnet') {
     scheduleFolderMagnet(plantData);
   } else if (type === 'xsas_mushroom') {
+    plantData._xsasPlanted = performance.now();
+    plantData._xsasDelay = 3000;
     const bombKey = `xsas_${col}_${row}`;
     State._timers[bombKey] = setTimeout(() => {
       if (!State.plants[row][col]) return;
+      if (State.plants[row][col].archived) return;
       triggerXSASExplosion(plantData);
     }, 3000);
   }
@@ -309,6 +353,22 @@ function placePlant(type, col, row) {
 function removePlant(col, row) {
   const p = State.plants[row][col];
   if (!p) return;
+
+  if (p.type === 'folder_magnet') {
+    const heldFile = State.droppedFiles.find(f =>
+      !f.collected && f.heldByMagnet && f.magnetCol === col && f.magnetRow === row
+    );
+    if (heldFile) {
+      GameLog.log('BSOD', `Magnet destroyed at [${col},${row}] while holding sys file → BSOD`);
+      spawnParticles(heldFile.x + 24, heldFile.y + 20, '#ff0000', 15);
+      p.el.remove();
+      State.plants[row][col] = null;
+      Game.triggerGameOver(null, 'magnet_destroyed');
+      return;
+    }
+  }
+
+  GameLog.log('PLANT', `Removed ${p.type} at [${col},${row}]`);
   p.el.remove();
   State.plants[row][col] = null;
   clearTimer(`plant_sun_${col}_${row}`);
@@ -414,6 +474,7 @@ function spawnSun(x, y, falling = true, value = 25) {
   const id = State.nextSunId++;
   const sun = { id, el, collected: false, y, falling, mc, value };
   State.suns.push(sun);
+  GameLog.log('SUN', `Spawned sun #${id} at (${Math.round(x)},${Math.round(y)}), falling=${falling}, value=${value}`);
 
   if (falling) {
     const targetY = y + rnd(200, 400);
@@ -450,6 +511,7 @@ function collectSun(sun) {
   sun.el.classList.add('sun-collect');
   if (sun.mc) { sun.mc.remove(); sun.mc = null; }
   State.sun += sun.value || 25;
+  GameLog.log('SUN', `Collected sun #${sun.id}, +${sun.value || 25}, total=${State.sun}`);
   UI.updateSun();
   SFX.play('snd-sun');
   setTimeout(() => removeSun(sun), 200);
@@ -476,6 +538,7 @@ function dropSystemFile(x, y, row) {
   const id = State.nextFileId++;
   const file = { id, x, y, row, el, collected: false };
   State.droppedFiles.push(file);
+  GameLog.log('FILE', `Dropped sys file #${id} at row ${row} (${Math.round(x)},${Math.round(y)})`);
 
   el.addEventListener('pointerdown', (e) => {
     e.preventDefault();
@@ -503,8 +566,9 @@ function checkWinrarFileCollision() {
   for (const z of State.zombies) {
     if (!z.alive || !z.canArchive) continue;
     for (const file of State.droppedFiles) {
-      if (file.collected) continue;
+      if (file.collected || file.heldByMagnet) continue;
       if (file.row === z.row && Math.abs(z.x - file.x) < CELL_W * 0.8) {
+        GameLog.log('BSOD', `WinRAR zombie #${z.id} archived dropped sys file #${file.id} → BSOD`);
         spawnParticles(file.x + 24, file.y + 20, '#ff0000', 15);
         Game.triggerGameOver(null, 'winrar_file_collision');
         return;
@@ -597,6 +661,7 @@ function spawnZombie(type, row) {
   }
 
   State.zombies.push(zombie);
+  GameLog.log('ZOMBIE', `Spawned ${type} #${id} on row ${row}, hp=${maxHp}, armor=${zombie.armorHits}, sysFile=${zombie.hasSystemFile}`);
 
   State.cursik.queue.push(id);
   if (!State.cursik.busy) processCursikQueue();
@@ -609,17 +674,25 @@ function damageZombie(zombie, dmg) {
 
   if (zombie.armorType && !zombie.armorBroken && zombie.armorHits > 0) {
     zombie.armorHits -= dmg;
+    GameLog.log('ZOMBIE', `Damage ${dmg} to ${zombie.type} #${zombie.id} armor, armorHits=${zombie.armorHits}`);
     if (zombie.armorHits <= 0) {
+      GameLog.log('ZOMBIE', `Armor broken on ${zombie.type} #${zombie.id}`);
       zombie.armorBroken = true;
       if (zombie._armorEl) { zombie._armorEl.remove(); zombie._armorEl = null; }
       const img = zombie.el.querySelector('.icon-img');
       if (img) img.src = 'static/img/zombies/зомби.webp';
       spawnParticles(zombie.x + 40, zombie.y + 30, '#888', 6);
+      const overflow = -zombie.armorHits;
+      if (overflow > 0) {
+        zombie.hp = Math.max(0, zombie.hp - overflow);
+        if (zombie.hp <= 0) killZombie(zombie);
+      }
     }
     return;
   }
 
   zombie.hp = Math.max(0, zombie.hp - dmg);
+  GameLog.log('ZOMBIE', `Damage ${dmg} to ${zombie.type} #${zombie.id}, hp=${zombie.hp}/${zombie.maxHp}`);
   const pct = (zombie.hp / zombie.maxHp) * 100;
   zombie.hpFill.style.width = pct + '%';
   if (zombie.hpText) zombie.hpText.textContent = Math.max(0, Math.round(pct)) + '%';
@@ -627,16 +700,28 @@ function damageZombie(zombie, dmg) {
   if (zombie.hp <= 0) killZombie(zombie);
 }
 
-function killZombie(zombie) {
+function killZombie(zombie, opts) {
   zombie.alive = false;
+  const devKill = opts === true || (opts && opts.dev);
+  const dropFile = opts && opts.dropFile;
+  GameLog.log('ZOMBIE', `Killed ${zombie.type} #${zombie.id} at row ${zombie.row} x=${Math.round(zombie.x)} (dev=${devKill}, dropFile=${!!dropFile})`);
 
   if (zombie.hasSystemFile && zombie.fileHp > 0) {
     zombie.hasSystemFile = false;
     zombie.fileHp = 0;
     if (zombie._fileEl) { zombie._fileEl.remove(); zombie._fileEl = null; }
-    spawnParticles(zombie.x + 40, zombie.y + 20, '#ff0000', 15);
-    Game.triggerGameOver(null, 'system_file_destroyed');
-    return;
+    if (dropFile) {
+      const o = getGridOrigin();
+      const zCol = Math.round((zombie.x - o.x) / CELL_W);
+      const zPos = cellToPixel(Math.max(0, Math.min(GRID_COLS - 1, zCol)), zombie.row);
+      dropSystemFile(zPos.x + CELL_W / 2 - 24, zPos.y + CELL_H / 2 - 24, zombie.row);
+      spawnParticles(zombie.x + 40, zombie.y + 20, '#4488ff', 10);
+    } else if (!devKill) {
+      GameLog.log('BSOD', `System file destroyed on zombie #${zombie.id} → BSOD`);
+      spawnParticles(zombie.x + 40, zombie.y + 20, '#ff0000', 15);
+      Game.triggerGameOver(null, 'system_file_destroyed');
+      return;
+    }
   }
 
   spawnParticles(zombie.x + 40, zombie.y + 50, '#8fbc8f', 10);
@@ -650,7 +735,7 @@ function killZombie(zombie) {
     State.cursik.dragZombieId = null;
     State.cursik.busy = false;
     State.cursik.el.classList.remove('dragging');
-    setTimeout(processCursikQueue, CURSIK_COOLDOWN);
+    setTimeout(processCursikQueue, getCursikCooldown());
   }
 
   setTimeout(() => {
@@ -659,8 +744,16 @@ function killZombie(zombie) {
   }, 350);
 }
 
-const CURSIK_COOLDOWN  = 200;
+const CURSIK_BASE_COOLDOWN = 200;
 const CURSIK_DRAG_TIME = 500;
+
+function getCursikCooldown() {
+  const aliveZombies = State.zombies.filter(z => z.alive).length;
+  const wave = State.wave || 0;
+  const zombieFactor = Math.min(0.5, aliveZombies * 0.04);
+  const waveFactor = Math.min(0.3, wave * 0.06);
+  return Math.max(40, Math.round(CURSIK_BASE_COOLDOWN * (1 - zombieFactor - waveFactor)));
+}
 
 function processCursikQueue() {
   if (State.cursik.busy) return;
@@ -676,7 +769,7 @@ function processCursikQueue() {
 
   if (!zombie || !zombie.alive) {
     State.cursik.queue.shift();
-    setTimeout(processCursikQueue, CURSIK_COOLDOWN);
+    setTimeout(processCursikQueue, getCursikCooldown());
     return;
   }
 
@@ -695,6 +788,7 @@ function processCursikQueue() {
 
   State.cursik.busy = true;
   State.cursik.dragZombieId = zombie.id;
+  GameLog.log('CURSIK', `Dragging ${zombie.type} #${zombie.id} on row ${zombie.row}, x=${Math.round(zombie.x)}`);
 
   zombie.el.classList.add('selected');
   zombie.selected = true;
@@ -704,7 +798,7 @@ function processCursikQueue() {
       State.cursik.dragZombieId = null;
       State.cursik.busy = false;
       State.cursik.el.classList.remove('dragging');
-      setTimeout(processCursikQueue, CURSIK_COOLDOWN);
+      setTimeout(processCursikQueue, getCursikCooldown());
       return;
     }
 
@@ -726,7 +820,7 @@ function processCursikQueue() {
       }
       State.cursik.busy = false;
 
-      setTimeout(processCursikQueue, CURSIK_COOLDOWN);
+      setTimeout(processCursikQueue, getCursikCooldown());
     });
   }, true);
 }
@@ -767,7 +861,13 @@ function moveCursikToPoint(tx, ty, cb) {
 }
 
 const DRAG_STEP_PX = 22;
-const DRAG_STEP_MS = 140;
+const DRAG_BASE_MS = 140;
+
+function getDragStepMs() {
+  const aliveZombies = State.zombies.filter(z => z.alive).length;
+  const speedup = Math.min(0.3, aliveZombies * 0.02);
+  return Math.max(80, Math.round(DRAG_BASE_MS * (1 - speedup)));
+}
 
 function animateZombieMove(zombie, targetX, duration, cb) {
   const ck = State.cursik;
@@ -792,12 +892,12 @@ function animateZombieMove(zombie, targetX, duration, cb) {
     posEl(ck.el, ck.x - 20, ck.y - 20);
 
     if (remaining > 1) {
-      setTimeout(dragStep, DRAG_STEP_MS);
+      setTimeout(dragStep, getDragStepMs());
     } else {
       cb && cb();
     }
   }
-  setTimeout(dragStep, DRAG_STEP_MS);
+  setTimeout(dragStep, getDragStepMs());
 }
 
 function spawnLawnmowers() {
@@ -837,6 +937,7 @@ function triggerLawnmower(row) {
   const mower = State.lawnmowers[row];
   if (!mower || mower.running || !mower.alive) return;
   mower.running = true;
+  GameLog.log('LAWNMOWER', `Triggered lawnmower on row ${row}`);
   mower.el.classList.add('running');
   SFX.play('snd-lawnmower');
 
@@ -852,7 +953,7 @@ function triggerLawnmower(row) {
     State.zombies.filter(z => z.alive && !z.isBoss && z.row === row).forEach(z => {
       if (Math.abs(z.x - mower.x) < CELL_W) {
         spawnParticles(z.x + 40, z.y + 40, '#e74c3c', 12);
-        killZombie(z);
+        killZombie(z, { dropFile: true });
       }
     });
 
@@ -874,6 +975,7 @@ function checkZombieRow(zombie) {
   if (zombie.x <= o.x - 20) {
     const mower = State.lawnmowers[zombie.row];
     if (mower && !mower.running && mower.alive) {
+      GameLog.log('ZOMBIE', `${zombie.type} #${zombie.id} reached end of row ${zombie.row} → lawnmower`);
       zombie.reachedEnd = true;
       State.cursik.queue = State.cursik.queue.filter(id => id !== zombie.id);
       if (State.cursik.dragZombieId === zombie.id) {
@@ -882,10 +984,11 @@ function checkZombieRow(zombie) {
         State.cursik.el.classList.remove('dragging');
         zombie.el.classList.remove('selected');
         zombie.selected = false;
-        setTimeout(processCursikQueue, CURSIK_COOLDOWN);
+        setTimeout(processCursikQueue, getCursikCooldown());
       }
       triggerLawnmower(zombie.row);
     } else if (!mower || !mower.alive) {
+      GameLog.log('BSOD', `${zombie.type} #${zombie.id} reached end of row ${zombie.row}, no lawnmower → BSOD`);
       zombie.reachedEnd = true;
       Game.triggerGameOver(zombie);
     }
@@ -964,6 +1067,7 @@ function gameLoop(ts) {
 }
 
 function startGameLoop() {
+  GameLog.log('GAME', 'Game loop started');
   lastTime = performance.now();
   requestAnimationFrame(gameLoop);
 }
@@ -995,17 +1099,43 @@ function scheduleFolderMagnet(plant) {
       const distX = Math.abs(z.x - plantPos.x) / CELL_W;
       const distY = Math.abs(z.row - plant.row);
       if (distX <= cfg.attractRadius && distY <= cfg.attractRadius) {
+        GameLog.log('MAGNET', `Folder-magnet [${plant.col},${plant.row}] attracted sys file from zombie #${z.id} on row ${z.row}`);
         z.hasSystemFile = false;
         z.fileHp = 0;
         if (z._fileEl) { z._fileEl.remove(); z._fileEl = null; }
         const imgEl = z.el.querySelector('.icon-img');
         if (imgEl) imgEl.src = 'static/img/zombies/зомби.webp';
-        const zCol = Math.round((z.x - getGridOrigin().x) / CELL_W);
-        const zPos = cellToPixel(Math.max(0, Math.min(GRID_COLS - 1, zCol)), z.row);
-        dropSystemFile(zPos.x + CELL_W / 2 - 24, zPos.y + CELL_H / 2 - 24, z.row);
+
         State._magnetBlocked[magnetKey] = true;
-        spawnParticles(plantPos.x + CELL_W/2, plantPos.y + CELL_H/2, '#4488ff', 8);
-        SFX.play('snd-sun');
+
+        const flyEl = makeEl('div', 'magnet-fly-file', sunsLayer());
+        flyEl.style.position = 'absolute';
+        const flyImg = makeEl('img', 'icon-img', flyEl);
+        flyImg.src = 'static/img/other/sys.png';
+        flyImg.draggable = false;
+        posEl(flyEl, z.x + 20, z.y + 10);
+        flyEl.style.transition = 'left 0.6s cubic-bezier(0.2,0.8,0.3,1), top 0.6s cubic-bezier(0.2,0.8,0.3,1), transform 0.6s ease';
+        flyEl.style.zIndex = '50';
+
+        requestAnimationFrame(() => {
+          posEl(flyEl, plantPos.x + CELL_W / 2 - 24, plantPos.y + CELL_H / 2 - 24);
+          flyEl.style.transform = 'scale(0.8) rotate(-15deg)';
+        });
+
+        setTimeout(() => {
+          flyEl.remove();
+          spawnParticles(plantPos.x + CELL_W/2, plantPos.y + CELL_H/2, '#4488ff', 8);
+          SFX.play('snd-sun');
+          const dropX = plantPos.x + CELL_W / 2 - 24;
+          const dropY = plantPos.y + CELL_H / 2 - 24;
+          const file = dropSystemFile(dropX, dropY, plant.row);
+          if (file) {
+            file.heldByMagnet = true;
+            file.magnetCol = plant.col;
+            file.magnetRow = plant.row;
+          }
+        }, 650);
+
         break;
       }
     }
@@ -1018,6 +1148,7 @@ function triggerXSASExplosion(plant) {
   const radius = PLANTS.xsas_mushroom.explosionRadius;
   const pos = cellToPixel(cx, cy);
 
+  GameLog.log('XSAS', `XSAS explosion at [${cx},${cy}], radius=${radius}`);
   removePlant(cx, cy);
 
   spawnParticles(pos.x + CELL_W/2, pos.y + CELL_H/2, '#ff00ff', 20);
@@ -1025,12 +1156,29 @@ function triggerXSASExplosion(plant) {
   SFX.play('snd-explosion');
 
   const o = getGridOrigin();
+  let hitCursikZombie = false;
   for (const z of State.zombies) {
     if (!z.alive || z.isBoss) continue;
     const zCol = Math.floor((z.x - o.x) / CELL_W);
     const zRow = z.row;
     if (Math.abs(zCol - cx) <= radius && Math.abs(zRow - cy) <= radius) {
+      if (State.cursik.dragZombieId === z.id) hitCursikZombie = true;
       damageZombie(z, 999);
+    }
+  }
+
+  if (hitCursikZombie) {
+    GameLog.log('XSAS', 'XSAS killed Cursik\'s dragged zombie → "Ай!" reaction');
+    const ck = State.cursik;
+    const bubble = ck.bubbleEl;
+    if (bubble) {
+      bubble.textContent = 'Ай!';
+      bubble.classList.remove('hidden');
+      setTimeout(() => bubble.classList.add('hidden'), 1200);
+    }
+    if (ck.el) {
+      ck.el.classList.add('cursik-flinch');
+      setTimeout(() => ck.el.classList.remove('cursik-flinch'), 500);
     }
   }
 
@@ -1104,11 +1252,17 @@ function checkPlantsEaten() {
           const p = State.plants[zombie.row][col];
           if (p && !p.archived) {
             p.archived = true;
+            GameLog.log('ARCHIVE', `WinRAR zombie #${zombie.id} archived ${p.type} at [${col},${zombie.row}]`);
             const img = p.el.querySelector('.icon-img');
             if (img) img.src = 'static/img/other/winrar.jpg';
             p.el.style.opacity = '0.85';
             clearTimer(`plant_sun_${col}_${zombie.row}`);
             clearTimer(`plant_shoot_${col}_${zombie.row}`);
+            if (p.type === 'xsas_mushroom') {
+              const elapsed = performance.now() - (p._xsasPlanted || 0);
+              p._xsasRemaining = Math.max(0, (p._xsasDelay || 3000) - elapsed);
+              clearTimer(`xsas_${col}_${zombie.row}`);
+            }
             addFilenameLabel(p.el, '.rar', 'archive-label');
           }
           zombie._archiveTimer = null;
@@ -1137,6 +1291,7 @@ function checkPlantsEaten() {
 function unarchivePlant(col, row) {
   const plant = State.plants[row][col];
   if (!plant || !plant.archived) return false;
+  GameLog.log('ARCHIVE', `Unarchived ${plant.type} at [${col},${row}]`);
   plant.archived = false;
   const img = plant.el.querySelector('.icon-img');
   if (img) img.src = `static/img/plants/${PLANTS[plant.type].file}`;
@@ -1147,6 +1302,17 @@ function unarchivePlant(col, row) {
   if (plant.type === 'sunflower') scheduleSunflower(plant);
   else if (plant.type === 'peashooter') scheduleShoot(plant);
   else if (plant.type === 'siamese_peashooter') scheduleShoot(plant);
+  else if (plant.type === 'xsas_mushroom') {
+    const remaining = plant._xsasRemaining != null ? plant._xsasRemaining : 3000;
+    plant._xsasPlanted = performance.now();
+    plant._xsasDelay = remaining;
+    const bombKey = `xsas_${col}_${row}`;
+    State._timers[bombKey] = setTimeout(() => {
+      if (!State.plants[row][col]) return;
+      if (State.plants[row][col].archived) return;
+      triggerXSASExplosion(plant);
+    }, remaining);
+  }
   return true;
 }
 
@@ -1154,6 +1320,7 @@ function checkWaveComplete() {
 }
 
 function showDeleteDialog(col, row, plant) {
+  GameLog.log('PLANT', `Plant ${plant.type} at [${col},${row}] eaten by zombie (hp=0)`);
   const pos = cellToPixel(col, row);
   const fileName = PLANTS[plant.type]?.displayName || PLANTS[plant.type]?.file || 'файл';
 

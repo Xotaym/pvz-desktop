@@ -1,7 +1,11 @@
 "use strict";
 
 async function init() {
+  GameLog.init();
+  GameLog.log('SYSTEM', 'Game init started');
   document.addEventListener('dragstart', (e) => e.preventDefault());
+
+  const bootDataPromise = Boot.preloadBootData();
 
   await UI.loadManifest();
   UI.initCursik();
@@ -34,6 +38,16 @@ async function init() {
   });
 
   if (!localStorage.getItem('pvz_boot_shown')) {
+    UI.showScreen('welcome');
+
+    await new Promise(resolve => {
+      document.getElementById('btn-welcome-start').addEventListener('click', resolve, { once: true });
+    });
+
+    UI.hideScreen('welcome');
+    await delay(600);
+    await bootDataPromise;
+
     document.getElementById('screen-boot').style.display = 'flex';
     await delay(100);
     document.getElementById('screen-boot').style.opacity = '1';
@@ -66,6 +80,10 @@ async function onPlayClicked() {
 }
 
 async function startGame() {
+  GameLog.log('GAME', 'Starting new game');
+  SFX.stop('snd-menu');
+  await UI.loadDesktopData();
+
   const S = Engine.State;
 
   resetFullGameState();
@@ -290,7 +308,7 @@ function initDevPanel() {
 
     document.getElementById('dev-kill-all').addEventListener('click', () => {
       [...Engine.State.zombies].forEach(z => {
-        if (z.alive) Engine.killZombie(z);
+        if (z.alive) Engine.killZombie(z, true);
       });
     });
 
@@ -390,7 +408,7 @@ function executeDevCommand(input) {
       if (!arg) { consolePrint('Использование: kill <A1-I5> или kill all', 'error'); break; }
       if (arg.toLowerCase() === 'all') {
         let count = 0;
-        [...S.zombies].forEach(z => { if (z.alive) { Engine.killZombie(z); count++; } });
+        [...S.zombies].forEach(z => { if (z.alive) { Engine.killZombie(z, true); count++; } });
         consolePrint('Убито зомби: ' + count, 'success');
       } else {
         const cell = parseCell(arg);
@@ -402,7 +420,7 @@ function executeDevCommand(input) {
           z.alive && z.row === cell.row && z.x >= cellLeft - 20 && z.x <= cellRight + 20
         );
         if (zombie) {
-          Engine.killZombie(zombie);
+          Engine.killZombie(zombie, true);
           consolePrint('Убит зомби на ' + arg.toUpperCase(), 'success');
         } else {
           consolePrint('Зомби не найден на ' + arg.toUpperCase(), 'error');

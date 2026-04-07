@@ -22,6 +22,9 @@ save.json
 Thumbs.db
 desktop.ini
 
+# pywebview cache
+storage/
+
 # IDE
 .vscode/
 .idea/

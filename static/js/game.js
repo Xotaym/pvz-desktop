@@ -46,6 +46,7 @@ function startWave(waveIndex) {
 
   const S = Engine.State;
   S.wave = waveIndex + 1;
+  GameLog.log('WAVE', `Starting wave ${S.wave}/${WAVE_CONFIGS.length}, zombies: ${WAVE_CONFIGS[waveIndex].zombies?.length || 'boss'}`);
   UI.updateWave();
 
   const cfg = WAVE_CONFIGS[waveIndex];
@@ -78,6 +79,7 @@ function startWave(waveIndex) {
     if (S._devPaused) return;
     if (currentWaveZombiesSpawned < currentWaveZombiesTotal) return;
     if (S.zombies.filter(z => z.alive).length === 0) {
+      GameLog.log('WAVE', `Wave ${waveIndex + 1} complete, all zombies dead`);
       clearInterval(waveCheckInterval);
       waveActive = false;
       function tryNextWave() {
@@ -116,6 +118,7 @@ function showWaveBanner(num) {
 
 function startBossWave() {
   const S = Engine.State;
+  GameLog.log('WAVE', 'Boss wave started — "Ваша смерть" incoming');
   showWaveBanner('???');
   SFX.play('snd-death');
 
@@ -231,6 +234,11 @@ const DEATH_REASONS = {
     text: 'WinRAR-зомби заархивировал упавший системный файл. Система повреждена — критическая ошибка!',
     tip: 'Совет: Быстро подбирайте упавшие системные файлы, пока WinRAR-зомби не добрались!',
   },
+  magnet_destroyed: {
+    title: 'Папка-магнит уничтожена',
+    text: 'Зомби съели папку-магнит, которая удерживала системный файл. Файл потерян — критический сбой!',
+    tip: 'Совет: Защищайте папку-магнит горохострелами! Или быстрее перетащите файл в System32.',
+  },
 };
 
 function triggerGameOver(zombie, reason) {
@@ -240,6 +248,8 @@ function triggerGameOver(zombie, reason) {
   Engine.clearAllTimers();
 
   const deathReason = reason || (zombie ? 'zombie_reached' : 'boss');
+  GameLog.log('BSOD', `Game over! Reason: ${deathReason}${zombie ? `, zombie #${zombie.id} (${zombie.type})` : ''}`);
+  GameLog.flush();
 
   if (zombie && zombie.alive) {
     zombie.el.classList.add('selected');

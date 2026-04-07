@@ -22,6 +22,7 @@ const SFX = {
     this._checkNative();
     if (this._isMusic(id) && this._musicMuted) return;
     if (!this._isMusic(id) && this._sfxMuted) return;
+    GameLog.log('SFX', `Play: ${id} (native=${this._nativeAvailable})`);
 
     if (this._nativeAvailable) {
       window.pywebview.api.play(id).catch(() => {});
@@ -29,20 +30,28 @@ const SFX = {
 
     const el = document.getElementById(id);
     if (!el) return;
-    el.volume = this._volume;
-    el.currentTime = 0;
-    el.play().catch(() => {});
+    if (this._nativeAvailable) {
+      el.pause();
+      el.currentTime = 0;
+    } else {
+      el.volume = this._volume;
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    }
   },
 
   stop(id) {
     this._checkNative();
+    GameLog.log('SFX', `Stop: ${id}`);
     if (this._nativeAvailable) {
       window.pywebview.api.stop(id).catch(() => {});
     }
+
     const el = document.getElementById(id);
-    if (!el) return;
-    el.pause();
-    el.currentTime = 0;
+    if (el) {
+      el.pause();
+      el.currentTime = 0;
+    }
   },
 
   toggle(id) {
@@ -495,16 +504,20 @@ function initPauseMenu() {
 
 function pauseGame() {
   Engine.State.paused = true;
+  GameLog.log('GAME', 'Game paused');
   document.getElementById('pause-menu').classList.remove('hidden');
   SFX.stop('snd-menu');
 }
 
 function resumeGame() {
   Engine.State.paused = false;
+  GameLog.log('GAME', 'Game resumed');
   document.getElementById('pause-menu').classList.add('hidden');
 }
 
 function returnToMenu() {
+  GameLog.log('GAME', 'Returning to menu');
+  GameLog.flush();
   const S = Engine.State;
   S.gameOver = true;
   S.started  = false;
@@ -577,6 +590,10 @@ async function loadDesktopData() {
   const desktop = document.getElementById('fake-desktop');
   const shot = document.getElementById('desktop-screenshot');
   if (shot) shot.style.display = 'none';
+
+  if (!window._desktopWallpaper && window._bootData && window._bootData.wallpaper) {
+    window._desktopWallpaper = 'data:image/png;base64,' + window._bootData.wallpaper;
+  }
 
   if (window._desktopWallpaper) {
     desktop.style.backgroundImage = `url(${window._desktopWallpaper})`;
@@ -678,11 +695,35 @@ function initSettings() {
   devCb.checked = savedDev;
   devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = savedDev ? 'ВКЛ' : 'ВЫКЛ';
 
+  const clearLogsBtn = document.getElementById('settings-clear-logs');
+  function updateClearLogsVisibility() {
+    clearLogsBtn.style.display = devCb.checked ? '' : 'none';
+  }
+  updateClearLogsVisibility();
+
   devCb.addEventListener('change', () => {
     const on = devCb.checked;
     devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = on ? 'ВКЛ' : 'ВЫКЛ';
     localStorage.setItem('pvz_devmode', String(on));
     if (!on) document.getElementById('dev-panel')?.classList.add('hidden');
+    updateClearLogsVisibility();
+  });
+
+  const confirmLogsModal = document.getElementById('confirm-logs-modal');
+  clearLogsBtn.addEventListener('click', () => {
+    confirmLogsModal.classList.remove('hidden');
+  });
+  document.getElementById('confirm-logs-yes').addEventListener('click', () => {
+    GameLog.clear().then(() => {
+      GameLog.log('SYSTEM', 'Logs cleared by user');
+    });
+    confirmLogsModal.classList.add('hidden');
+  });
+  document.getElementById('confirm-logs-no').addEventListener('click', () => {
+    confirmLogsModal.classList.add('hidden');
+  });
+  confirmLogsModal.addEventListener('click', (e) => {
+    if (e.target === confirmLogsModal) confirmLogsModal.classList.add('hidden');
   });
 
   closeBtn.addEventListener('click', closeSettings);

@@ -22,5 +22,3 @@ pip install -r requirements.txt --quiet 2>nul
 echo [2/2] Starting game...
 echo.
 python server.py
-
-pause

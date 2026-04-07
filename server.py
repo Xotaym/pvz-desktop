@@ -38,6 +38,13 @@ else:
 STATIC_DIR = BASE_DIR / "static"
 MANIFEST_FILE = BASE_DIR / "manifest.json"
 
+if getattr(sys, 'frozen', False):
+    _LOG_DIR = Path(sys.executable).parent
+else:
+    _LOG_DIR = BASE_DIR
+LOG_FILE = _LOG_DIR / "game.log"
+_log_lock = threading.Lock()
+
 _ACCESS_TOKEN = base64.b64encode(os.urandom(16)).decode()
 
 def find_free_port(preferred=8765):
@@ -270,7 +277,29 @@ class GameHandler(SimpleHTTPRequestHandler):
             self._send_forbidden()
             return
         parsed = urlparse(self.path)
-        if parsed.path == "/api/save":
+        if parsed.path == "/api/log":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+                lines = data.get("lines", [])
+                if lines:
+                    with _log_lock:
+                        with open(LOG_FILE, "a", encoding="utf-8") as f:
+                            for line in lines:
+                                f.write(line + "\n")
+                self._json({"ok": True})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
+        elif parsed.path == "/api/log/clear":
+            try:
+                with _log_lock:
+                    with open(LOG_FILE, "w", encoding="utf-8") as f:
+                        f.write("")
+                self._json({"ok": True})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
+        elif parsed.path == "/api/save":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length)
             try:
@@ -305,12 +334,10 @@ class AudioBridge:
     def __init__(self):
         self._sounds_dir = STATIC_DIR / "sounds"
         self._cache = {}
-        self._aliases = {}
         self._volume = 1.0
         self._muted_sfx = False
         self._muted_music = False
         self._music_ids = {"snd-menu"}
-        self._alias_counter = 0
         self._lock = threading.Lock()
         self._scan_sounds()
 
@@ -340,10 +367,8 @@ class AudioBridge:
                     break
 
     def _get_alias(self, sound_id):
-        if sound_id not in self._aliases:
-            self._alias_counter += 1
-            self._aliases[sound_id] = f"pvz_{self._alias_counter}"
-        return self._aliases[sound_id]
+        clean = sound_id.replace("-", "")
+        return f"pvz_{clean}"
 
     def play(self, sound_id):
         if os.name != "nt":
@@ -374,16 +399,15 @@ class AudioBridge:
             return False
         try:
             with self._lock:
-                if sound_id and sound_id in self._aliases:
-                    alias = self._aliases[sound_id]
+                if sound_id:
+                    alias = self._get_alias(sound_id)
                     self._mci(f'stop {alias}')
                     self._mci(f'close {alias}')
-                    del self._aliases[sound_id]
-                elif not sound_id:
-                    for alias in list(self._aliases.values()):
+                else:
+                    for sid in list(self._cache.keys()):
+                        alias = self._get_alias(sid)
                         self._mci(f'stop {alias}')
                         self._mci(f'close {alias}')
-                    self._aliases.clear()
             return True
         except Exception:
             return False
@@ -392,7 +416,8 @@ class AudioBridge:
         self._volume = max(0.0, min(1.0, float(volume)))
         vol = int(self._volume * 1000)
         with self._lock:
-            for alias in self._aliases.values():
+            for sid in self._cache:
+                alias = self._get_alias(sid)
                 self._mci(f'setaudio {alias} volume to {vol}')
         return True
 
@@ -401,8 +426,7 @@ class AudioBridge:
         self._muted_music = bool(music_muted)
         if self._muted_music:
             for sid in list(self._music_ids):
-                if sid in self._aliases:
-                    self.stop(sid)
+                self.stop(sid)
         return True
 
 def start_server():
@@ -410,7 +434,30 @@ def start_server():
     print(f"[PvZ Desktop] Server running: http://127.0.0.1:{PORT}")
     server.serve_forever()
 
+_lock_file = None
+
+def acquire_lock():
+    global _lock_file
+    if os.name != "nt":
+        return True
+    lock_path = os.path.join(os.environ.get("TEMP", "."), "pvz_desktop.lock")
+    try:
+        _lock_file = open(lock_path, "w")
+        import msvcrt
+        msvcrt.locking(_lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+        return True
+    except (OSError, IOError):
+        return False
+
 def main():
+    if not acquire_lock():
+        print("[PvZ Desktop] Game is already running!")
+        if os.name == "nt":
+            ctypes.windll.user32.MessageBoxW(
+                0, "Игра уже запущена!", "PvZ Desktop", 0x30
+            )
+        sys.exit(1)
+
     print(f"[PvZ Desktop] Port: {PORT}")
 
     if HAS_WEBVIEW:
@@ -437,8 +484,8 @@ def main():
         )
         webview.start(private_mode=False, storage_path=storage_dir)
 
-        print("[PvZ Desktop] Window closed, exiting.")
-        os._exit(0)
+        audio_bridge.stop()
+        sys.exit(0)
     else:
         print("[PvZ Desktop] No pywebview, server-only mode.")
         print(f"[PvZ Desktop] Open http://127.0.0.1:{PORT} in browser.")

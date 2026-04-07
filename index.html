@@ -17,6 +17,35 @@ if (location.protocol === 'file:') {
 <body>
 
 <!-- ══════════════════════════════════════════════════════════════
+     ЭКРАН ПРИВЕТСТВИЯ (первый запуск)
+═══════════════════════════════════════════════════════════════ -->
+<div id="screen-welcome" class="screen">
+  <div class="welcome-bg"></div>
+  <div class="welcome-cursik">
+    <img src="static/img/ui/курсик.png" alt="">
+  </div>
+  <div class="welcome-mini-cursik welcome-mc-1">
+    <img src="static/img/ui/курсик.png" alt="">
+  </div>
+  <div class="welcome-mini-cursik welcome-mc-2">
+    <img src="static/img/ui/курсик.png" alt="">
+  </div>
+  <div class="welcome-mini-cursik welcome-mc-3">
+    <img src="static/img/ui/курсик.png" alt="">
+  </div>
+  <div class="welcome-content">
+    <div class="welcome-title">
+      <span class="wt-plants">Plants</span>
+      <span class="wt-vs">VS</span>
+      <span class="wt-zombies">Zombies</span>
+      <span class="wt-desktop">Desktop</span>
+    </div>
+    <p class="welcome-subtitle">Твой рабочий стол — поле битвы.</p>
+    <button class="welcome-btn" id="btn-welcome-start">Начать</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
      ЭКРАН ЗАГРУЗКИ (показывается первым)
 ═══════════════════════════════════════════════════════════════ -->
 <div id="screen-boot" class="screen active">
@@ -426,11 +455,24 @@ if (location.protocol === 'file:') {
       </label>
     </div>
 
+    <button class="pause-btn small dev-only-btn" id="settings-clear-logs" style="display:none">Очистить логи</button>
+
     <button class="pause-btn" id="settings-close">✔ Готово</button>
 
     <div class="settings-divider"></div>
     <button class="pause-btn danger" id="settings-reset">🗑 Перезапустить полностью</button>
     <p class="settings-hint">Игра как новая, будто только-что скачал</p>
+  </div>
+</div>
+
+<!-- Подтверждение очистки логов -->
+<div id="confirm-logs-modal" class="confirm-modal hidden">
+  <div class="confirm-box">
+    <p>Вы уверены? Это очистит весь .log файл.</p>
+    <div class="confirm-buttons">
+      <button class="pause-btn danger" id="confirm-logs-yes">Да, очистить</button>
+      <button class="pause-btn" id="confirm-logs-no">Отмена</button>
+    </div>
   </div>
 </div>
 
