@@ -6,7 +6,6 @@
 <title>Plants VS Zombies Desktop</title>
 <link rel="stylesheet" href="static/css/main.css">
 <script>
-// Блокировка открытия напрямую как файл
 if (location.protocol === 'file:') {
   document.addEventListener('DOMContentLoaded', function() {
     document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a1a;color:#e74c3c;font-family:Consolas,monospace;text-align:center;padding:40px"><div><h1 style="font-size:48px;margin:0 0 20px">&#x26D4;</h1><h2 style="margin:0 0 12px">Доступ запрещён</h2><p style="color:#888;font-size:14px">Запустите игру через <b>server.py</b></p><p style="color:#555;font-size:12px;margin-top:8px">python server.py</p></div></div>';
@@ -16,9 +15,6 @@ if (location.protocol === 'file:') {
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ЭКРАН ПРИВЕТСТВИЯ (первый запуск)
-═══════════════════════════════════════════════════════════════ -->
 <div id="screen-welcome" class="screen">
   <div class="welcome-bg"></div>
   <div class="welcome-cursik">
@@ -45,9 +41,6 @@ if (location.protocol === 'file:') {
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ЭКРАН ЗАГРУЗКИ (показывается первым)
-═══════════════════════════════════════════════════════════════ -->
 <div id="screen-boot" class="screen active">
   <div class="boot-defender" style="display:none">
     <div class="defender-header">
@@ -93,9 +86,6 @@ if (location.protocol === 'file:') {
   <div id="boot-icons" class="boot-desktop-icons"></div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ГЛАВНОЕ МЕНЮ
-═══════════════════════════════════════════════════════════════ -->
 <div id="screen-menu" class="screen">
   <div class="menu-bg"></div>
   <div class="menu-logo-wrap">
@@ -115,9 +105,6 @@ if (location.protocol === 'file:') {
   <div class="menu-version" id="menu-version">v0.1.0</div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ДОКУМЕНТАЦИЯ
-═══════════════════════════════════════════════════════════════ -->
 <div id="screen-docs" class="screen">
   <div class="docs-overlay"></div>
   <div class="docs-window">
@@ -177,6 +164,13 @@ if (location.protocol === 'file:') {
           <p>Стоимость: <b>50 ☀</b></p>
           <p>Снимает архивацию с растений, заражённых WinRAR-зомби. Не сажается — применяется на растение.</p>
         </div>
+        <div class="docs-card">
+          <img src="static/img/plants/касперский-боб.png" alt="Касперский-боб" onerror="this.src=''">
+          <h3>Касперский-боб</h3>
+          <span class="docs-class" style="color:#00cc44">Антивирус</span>
+          <p>Стоимость: <b>50 ☀</b></p>
+          <p>Лечит растения, заражённые троянами. Применяется на заражённое растение — оно полностью восстанавливается.</p>
+        </div>
       </div>
       <h2>🧟 Зомби</h2>
       <div class="docs-grid">
@@ -185,14 +179,14 @@ if (location.protocol === 'file:') {
           <h3>Зомби</h3>
           <span class="docs-class" style="color:#8fbc8f">Базовый</span>
           <p>ХП: <b>5–7</b></p>
-          <p>Обычный зомби. Передвигается с помощью Курсика.</p>
+          <p>Обычный зомби. Каждый следующий получает имя как копия файла в Windows: «зомби — копия.webp», «зомби — копия(1).webp» и т.д.</p>
         </div>
         <div class="docs-card">
-          <img src="static/img/zombies/зомби-копия.webp" alt="Зомби-копия" onerror="this.src=''">
-          <h3>Зомби-копия</h3>
-          <span class="docs-class" style="color:#8fbc8f">Базовый</span>
-          <p>ХП: <b>5–7</b></p>
-          <p>Дубликат обычного зомби.</p>
+          <img src="static/img/zombies/троянская-катапульта.jpg" alt="Троянская катапульта" onerror="this.src=''">
+          <h3>Троян-катапульта</h3>
+          <span class="docs-class" style="color:#9b59b6">Заражающий</span>
+          <p>ХП: <b>8–10</b></p>
+          <p>Стреляет троянами по случайным растениям. Заражённые растения перестают работать. При уничтожении заражённого — из него вылезает зомби!</p>
         </div>
         <div class="docs-card">
           <img src="static/img/zombies/систем-зомби.png" alt="Систем-зомби" onerror="this.src=''">
@@ -247,56 +241,38 @@ if (location.protocol === 'file:') {
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ИГРОВОЙ ЭКРАН
-═══════════════════════════════════════════════════════════════ -->
 <div id="screen-game" class="screen">
 
-  <!-- Фейковый рабочий стол -->
   <div id="fake-desktop">
     <img id="desktop-screenshot" src="" alt="">
     <div id="desktop-icons-layer"></div>
   </div>
 
-  <!-- Игровое поле поверх рабочего стола -->
   <div id="game-world">
 
-    <!-- Фон PvZ (газон) -->
     <div id="pvz-bg"></div>
-
-    <!-- Сетка клеток -->
     <div id="grid-container"></div>
-
-    <!-- Слой сущностей (зомби, растения, горошины, косилки) -->
     <div id="entities-layer"></div>
-
-    <!-- Курсик -->
     <div id="cursik">
       <img src="static/img/ui/курсик.png" alt="" onerror="this.style.display='none'">
       <div id="cursik-bubble" class="cursik-bubble hidden"></div>
     </div>
 
-    <!-- Солнца (падающие) -->
     <div id="suns-layer"></div>
-
-    <!-- Частицы -->
     <div id="particles-layer"></div>
 
   </div>
 
-  <!-- HUD верх -->
   <div id="hud-top">
     <div id="sun-counter">
       <img src="static/img/ui/солнце.png" alt="☀" onerror="this.textContent='☀'">
       <span id="sun-count">150</span>
     </div>
     <div id="plant-bar" class="plant-bar">
-      <!-- Карточки растений генерируются JS -->
-    </div>
+      </div>
     <div id="wave-info">Волна: <span id="wave-num">0</span></div>
   </div>
 
-  <!-- Меню паузы -->
   <div id="pause-menu" class="pause-menu hidden">
     <div class="pause-box">
       <h2>⏸ Пауза</h2>
@@ -307,10 +283,7 @@ if (location.protocol === 'file:') {
     </div>
   </div>
 
-  <!-- Ночной оверлей -->
   <div id="night-overlay" class="night-overlay hidden"></div>
-
-  <!-- Панель разработчика -->
   <div id="dev-panel" class="dev-panel hidden">
     <div class="dev-panel-header">
       <span>DEV PANEL</span>
@@ -331,11 +304,11 @@ if (location.protocol === 'file:') {
         <label>🧟 Спавн зомби:</label>
         <select id="dev-zombie-type" class="dev-select">
           <option value="zombie">Зомби</option>
-          <option value="zombie_copy">Зомби-копия</option>
           <option value="system_zombie">Систем-зомби</option>
           <option value="hdd_zombie">HDD-зомби</option>
           <option value="ssd_zombie">SSD-зомби</option>
           <option value="winrar_zombie">WinRAR-зомби</option>
+          <option value="trojan_catapult">Троян-катапульта</option>
           <option value="your_death">Ваша смерть</option>
         </select>
         <select id="dev-zombie-row" class="dev-select">
@@ -372,7 +345,6 @@ if (location.protocol === 'file:') {
     </div>
   </div>
 
-  <!-- Обучение -->
   <div id="tutorial-overlay" class="tutorial-overlay hidden">
     <div class="tutorial-box">
       <div id="tutorial-text"></div>
@@ -383,9 +355,6 @@ if (location.protocol === 'file:') {
 
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ФИНАЛЬНЫЙ ЭКРАН
-═══════════════════════════════════════════════════════════════ -->
 <div id="screen-end" class="screen bsod-screen">
   <div class="bsod-content">
     <div class="bsod-face" id="bsod-face" style="opacity:0">:(</div>
@@ -397,7 +366,6 @@ if (location.protocol === 'file:') {
   </div>
 </div>
 
-<!-- Настройки -->
 <div id="settings-modal" class="settings-modal hidden">
   <div class="settings-box">
     <h2>⚙ Настройки</h2>
@@ -465,7 +433,6 @@ if (location.protocol === 'file:') {
   </div>
 </div>
 
-<!-- Подтверждение очистки логов -->
 <div id="confirm-logs-modal" class="confirm-modal hidden">
   <div class="confirm-box">
     <p>Вы уверены? Это очистит весь .log файл.</p>
@@ -476,7 +443,6 @@ if (location.protocol === 'file:') {
   </div>
 </div>
 
-<!-- Подтверждение сброса -->
 <div id="confirm-modal" class="confirm-modal hidden">
   <div class="confirm-box">
     <p>Все сохранённые данные будут удалены.<br>Вы уверены?</p>
@@ -487,7 +453,6 @@ if (location.protocol === 'file:') {
   </div>
 </div>
 
-<!-- Аудио -->
 <audio id="snd-delete" src="static/sounds/удаление.mp3" preload="auto"></audio>
 <audio id="snd-pea" src="static/sounds/горошина.mp3" preload="auto"></audio>
 <audio id="snd-explosion" src="static/sounds/взрыв.mp3" preload="auto"></audio>

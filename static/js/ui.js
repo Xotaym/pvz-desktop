@@ -18,22 +18,30 @@ const SFX = {
     if (this._nativeAvailable) console.log('[SFX] Native audio via pywebview');
   },
 
+  _stopHtml(id) {
+    const el = document.getElementById(id);
+    if (el) { el.pause(); el.currentTime = 0; }
+  },
+
+  _stopAll(id) {
+    if (this._nativeAvailable) {
+      window.pywebview.api.stop(id).catch(() => {});
+    }
+    this._stopHtml(id);
+  },
+
   play(id) {
     this._checkNative();
     if (this._isMusic(id) && this._musicMuted) return;
     if (!this._isMusic(id) && this._sfxMuted) return;
-    GameLog.log('SFX', `Play: ${id} (native=${this._nativeAvailable})`);
+
+    this._stopAll(id);
 
     if (this._nativeAvailable) {
       window.pywebview.api.play(id).catch(() => {});
-    }
-
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (this._nativeAvailable) {
-      el.pause();
-      el.currentTime = 0;
     } else {
+      const el = document.getElementById(id);
+      if (!el) return;
       el.volume = this._volume;
       el.currentTime = 0;
       el.play().catch(() => {});
@@ -42,15 +50,17 @@ const SFX = {
 
   stop(id) {
     this._checkNative();
-    GameLog.log('SFX', `Stop: ${id}`);
-    if (this._nativeAvailable) {
-      window.pywebview.api.stop(id).catch(() => {});
-    }
+    this._stopAll(id);
+  },
 
-    const el = document.getElementById(id);
-    if (el) {
+  stopAll() {
+    this._checkNative();
+    document.querySelectorAll('audio').forEach(el => {
       el.pause();
       el.currentTime = 0;
+    });
+    if (this._nativeAvailable) {
+      window.pywebview.api.stop().catch(() => {});
     }
   },
 
@@ -151,6 +161,7 @@ const PLANT_DISPLAY = [
   { key: 'xsas_mushroom',      name: 'xsas-гриб.png',             cost: 150, file: 'xsas-гриб.png' },
   { key: 'sun_mushroom',       name: 'солнце-гриб.png',           cost: 25,  file: 'солнце-гриб.png', nightOnly: true },
   { key: 'unarchiver',         name: 'разархиватор.png',          cost: 50,  file: 'разархиватор.png', isItem: true },
+  { key: 'kaspersky_bean',    name: 'касп-боб.png',              cost: 50,  file: 'касперский-боб.png', isItem: true },
 ];
 
 function bindPlantDragHandlers() {
@@ -554,6 +565,7 @@ function resetGameState() {
   S.nextFileId = 0;
   S._sysFolder = null;
   S._magnetBlocked = {};
+  S._zombieCopyCount = 0;
 
   cancelFileDrag();
   document.querySelector('.sys-folder')?.remove();

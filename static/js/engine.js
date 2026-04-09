@@ -1,6 +1,5 @@
 "use strict";
 
-/* ─── GameLog: comprehensive logging system ─── */
 const GameLog = {
   _buffer: [],
   _flushInterval: null,
@@ -102,6 +101,7 @@ const State = {
   droppedFiles:    [],
   _sysFolder:      null,
   _magnetBlocked:  {},
+  _zombieCopyCount: 0,
 
   _timers: {},
 };
@@ -213,6 +213,18 @@ function tryPlacePlant(type, col, row) {
     return true;
   }
 
+  if (type === 'kaspersky_bean') {
+    const plant = State.plants[row]?.[col];
+    if (!plant || !plant.infected) return false;
+    State.sun -= PLANTS[type].cost;
+    GameLog.log('PLANT', `Kaspersky bean cured plant at [${col},${row}], sun=${State.sun}`);
+    cureInfection(col, row);
+    spawnParticles(plant.el.offsetLeft + CELL_W/2, plant.el.offsetTop + CELL_H/2, '#00ff00', 8);
+    UI.updateSun();
+    UI.updatePlantBar();
+    return true;
+  }
+
   if (!canPlacePlant(type, col, row)) return false;
   placePlant(type, col, row);
   State.sun -= PLANTS[type].cost;
@@ -301,6 +313,17 @@ const PLANTS = {
     displayName: 'разархиватор.png',
     isItem: true,
   },
+  kaspersky_bean: {
+    name: 'касперский-боб.png',
+    cost: 50,
+    file: 'касперский-боб.png',
+    folder: 'plants',
+    shootInterval: null,
+    sunInterval: null,
+    cooldown: 3000,
+    displayName: 'касп-боб.png',
+    isItem: true,
+  },
 };
 
 function placePlant(type, col, row) {
@@ -338,7 +361,7 @@ function placePlant(type, col, row) {
     const bombKey = `xsas_${col}_${row}`;
     State._timers[bombKey] = setTimeout(() => {
       if (!State.plants[row][col]) return;
-      if (State.plants[row][col].archived) return;
+      if (State.plants[row][col].archived || State.plants[row][col].infected) return;
       triggerXSASExplosion(plantData);
     }, 3000);
   }
@@ -350,7 +373,7 @@ function placePlant(type, col, row) {
   spawnParticles(pos.x + CELL_W/2, pos.y + CELL_H/2, '#7fff00', 6);
 }
 
-function removePlant(col, row) {
+function removePlant(col, row, safe) {
   const p = State.plants[row][col];
   if (!p) return;
 
@@ -368,7 +391,11 @@ function removePlant(col, row) {
     }
   }
 
-  GameLog.log('PLANT', `Removed ${p.type} at [${col},${row}]`);
+  if (!safe && p.infected && p.trojanCount > 0) {
+    spawnInfectedZombie(col, row, p.trojanCount);
+  }
+
+  GameLog.log('PLANT', `Removed ${p.type} at [${col},${row}]${safe ? ' (safe)' : ''}`);
   p.el.remove();
   State.plants[row][col] = null;
   clearTimer(`plant_sun_${col}_${row}`);
@@ -579,7 +606,6 @@ function checkWinrarFileCollision() {
 
 const ZOMBIE_TYPES = {
   zombie:      { name: 'зомби.webp', file: 'зомби.webp', hp: [5, 7], speed: 0.6, displayName: 'зомби.webp' },
-  zombie_copy: { name: 'зомби-копия.webp', file: 'зомби-копия.webp', hp: [5, 7], speed: 0.6, displayName: 'зомби-копия.webp' },
   your_death:  { name: 'ваша-смерть.png', file: 'ваша-смерть.png', hp: 999, speed: 0.3, isBoss: true, displayName: 'ваша-смерть.png' },
   system_zombie: {
     name: 'систем-зомби.png', file: 'систем-зомби.png', displayName: 'систем-зомби.png',
@@ -600,6 +626,12 @@ const ZOMBIE_TYPES = {
     name: 'winrar-зомби.png', file: 'winrar-зомби.png', displayName: 'winrar-зомби.png',
     hp: [5, 7], speed: 0.5,
     canArchive: true,
+  },
+  trojan_catapult: {
+    name: 'троянская-катапульта.jpg', file: 'троянская-катапульта.jpg',
+    displayName: 'троян-катапульта.jpg',
+    hp: [8, 10], speed: 0.4,
+    isCatapult: true, trojanInterval: 5000,
   },
 };
 
@@ -622,7 +654,14 @@ function spawnZombie(type, row) {
   img.draggable = false;
   img.onerror = () => { el.textContent = '🧟'; el.style.fontSize = '60px'; };
 
-  addFilenameLabel(el, cfg.displayName || cfg.file);
+  let label = cfg.displayName || cfg.file;
+  if (type === 'zombie') {
+    const c = State._zombieCopyCount++;
+    if (c === 0) label = 'зомби.webp';
+    else if (c === 1) label = 'зомби — копия.webp';
+    else label = `зомби — копия(${c - 1}).webp`;
+  }
+  addFilenameLabel(el, label);
 
   const hpBar = makeEl('div', 'zombie-hp-bar', el);
   const hpChrome = makeEl('div', 'zombie-hp-chrome', hpBar);
@@ -650,6 +689,7 @@ function spawnZombie(type, row) {
     canArchive: cfg.canArchive || false,
     _archiveTimer: null,
     abilitiesDisabled: false,
+    isCatapult: cfg.isCatapult || false,
   };
 
   if (zombie.hasSystemFile) {
@@ -658,6 +698,11 @@ function spawnZombie(type, row) {
 
   if (zombie.armorType) {
     zombie._armorEl = null;
+  }
+
+  if (zombie.isCatapult) {
+    const trojanKey = `trojan_${id}`;
+    gameInterval(trojanKey, () => fireTrojan(zombie), cfg.trojanInterval || 5000);
   }
 
   State.zombies.push(zombie);
@@ -723,6 +768,8 @@ function killZombie(zombie, opts) {
       return;
     }
   }
+
+  if (zombie.isCatapult) clearTimer(`trojan_${zombie.id}`);
 
   spawnParticles(zombie.x + 40, zombie.y + 50, '#8fbc8f', 10);
   zombie.el.style.transition = 'opacity 0.3s, transform 0.3s';
@@ -1142,6 +1189,131 @@ function scheduleFolderMagnet(plant) {
   }, cfg.attractInterval);
 }
 
+function fireTrojan(zombie) {
+  if (!zombie.alive || State.paused || State.gameOver) return;
+
+  const targets = [];
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const p = State.plants[r][c];
+      if (p && !p.archived) targets.push({ col: c, row: r });
+    }
+  }
+  if (targets.length === 0) return;
+
+  const target = targets[rndInt(0, targets.length - 1)];
+  const targetPos = cellToPixel(target.col, target.row);
+  GameLog.log('TROJAN', `Catapult #${zombie.id} fires trojan at plant [${target.col},${target.row}]`);
+
+  const startX = zombie.x + 20;
+  const startY = zombie.y;
+  const endX = targetPos.x + CELL_W / 2 - 16;
+  const endY = targetPos.y + CELL_H / 2 - 16;
+
+  const proj = makeEl('div', 'trojan-projectile', sunsLayer());
+  const projImg = makeEl('img', null, proj);
+  projImg.src = 'static/img/other/троян.webp';
+  projImg.draggable = false;
+  projImg.onerror = () => { proj.textContent = '🦠'; proj.style.fontSize = '24px'; };
+  posEl(proj, startX, startY);
+
+  const mc = spawnMiniCursik(sunsLayer());
+  posEl(mc, startX + 10, startY - 8);
+
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const arcHeight = Math.max(150, dist * 0.4);
+  const duration = 800;
+  const startTime = performance.now();
+
+  function animateArc() {
+    const elapsed = performance.now() - startTime;
+    const t = Math.min(1, elapsed / duration);
+
+    const x = startX + dx * t;
+    const baseY = startY + dy * t;
+    const arc = -4 * arcHeight * t * (t - 1);
+    const y = baseY - arc;
+
+    posEl(proj, x, y);
+    posEl(mc, x + 10, y - 8);
+
+    if (t < 1) {
+      requestAnimationFrame(animateArc);
+    } else {
+      proj.remove();
+      mc.remove();
+      spawnParticles(endX + 16, endY + 16, '#8b00ff', 6);
+      infectPlant(target.col, target.row);
+    }
+  }
+  requestAnimationFrame(animateArc);
+}
+
+function infectPlant(col, row) {
+  const plant = State.plants[row]?.[col];
+  if (!plant || plant.archived) return;
+
+  if (!plant.infected) {
+    plant.infected = true;
+    plant.trojanCount = 1;
+    clearTimer(`plant_sun_${col}_${row}`);
+    clearTimer(`plant_shoot_${col}_${row}`);
+    if (plant.type === 'xsas_mushroom') {
+      const elapsed = performance.now() - (plant._xsasPlanted || 0);
+      plant._xsasRemaining = Math.max(0, (plant._xsasDelay || 3000) - elapsed);
+      clearTimer(`xsas_${col}_${row}`);
+    }
+    GameLog.log('TROJAN', `Plant ${plant.type} at [${col},${row}] infected (count=1)`);
+  } else {
+    plant.trojanCount++;
+    GameLog.log('TROJAN', `Plant ${plant.type} at [${col},${row}] trojan count → ${plant.trojanCount}`);
+  }
+  plant.el.classList.add('infected');
+}
+
+function spawnInfectedZombie(col, row, trojanCount) {
+  let type;
+  if (trojanCount >= 3) type = 'ssd_zombie';
+  else if (trojanCount === 2) type = 'hdd_zombie';
+  else type = 'zombie';
+
+  GameLog.log('TROJAN', `Infected plant at [${col},${row}] spawned ${type} (trojanCount=${trojanCount})`);
+  const pos = cellToPixel(col, row);
+  spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#8b00ff', 12);
+  SFX.play('snd-explosion');
+  const zombie = spawnZombie(type, row);
+  if (zombie) {
+    zombie.x = pos.x;
+    posEl(zombie.el, zombie.x, zombie.y);
+  }
+}
+
+function cureInfection(col, row) {
+  const plant = State.plants[row]?.[col];
+  if (!plant || !plant.infected) return;
+  plant.infected = false;
+  plant.trojanCount = 0;
+  plant.el.classList.remove('infected');
+  GameLog.log('TROJAN', `Cured infection on ${plant.type} at [${col},${row}]`);
+
+  if (plant.type === 'sunflower' || plant.type === 'sun_mushroom') scheduleSunflower(plant);
+  else if (plant.type === 'peashooter' || plant.type === 'siamese_peashooter') scheduleShoot(plant);
+  else if (plant.type === 'folder_magnet') scheduleFolderMagnet(plant);
+  else if (plant.type === 'xsas_mushroom') {
+    const remaining = plant._xsasRemaining != null ? plant._xsasRemaining : 3000;
+    plant._xsasPlanted = performance.now();
+    plant._xsasDelay = remaining;
+    const bombKey = `xsas_${col}_${row}`;
+    State._timers[bombKey] = setTimeout(() => {
+      if (!State.plants[row][col]) return;
+      if (State.plants[row][col].archived || State.plants[row][col].infected) return;
+      triggerXSASExplosion(plant);
+    }, remaining);
+  }
+}
+
 function triggerXSASExplosion(plant) {
   const cx = plant.col;
   const cy = plant.row;
@@ -1149,7 +1321,7 @@ function triggerXSASExplosion(plant) {
   const pos = cellToPixel(cx, cy);
 
   GameLog.log('XSAS', `XSAS explosion at [${cx},${cy}], radius=${radius}`);
-  removePlant(cx, cy);
+  removePlant(cx, cy, true);
 
   spawnParticles(pos.x + CELL_W/2, pos.y + CELL_H/2, '#ff00ff', 20);
   spawnParticles(pos.x + CELL_W/2, pos.y + CELL_H/2, '#ff6600', 15);

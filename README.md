@@ -2,6 +2,11 @@
   <br>
   Plants VS Zombies Desktop
   <br>
+  <a href="https://github.com/xotaym/pvz-desktop/releases/latest">
+    <img src="https://img.shields.io/github/v/release/xotaym/pvz-desktop?label=Last%20release&color=blue" alt="Latest Release">
+  </a>
+  <img src="https://img.shields.io/github/stars/xotaym/pvz-desktop?style=social" alt="Stars">
+  <img src="https://img.shields.io/github/forks/xotaym/pvz-desktop?style=social" alt="Forks">
   <br>
   Russia <img src=https://flagicons.lipis.dev/flags/4x3/ru.svg width=40>
   <br>
@@ -45,6 +50,7 @@
 <td align="center" width="120"><img src="static/img/plants/сиамский-горохострел.png" width="56" /><br><b>Сиамский</b><br><sub>125 солнц</sub></td>
 <td align="center" width="120"><img src="static/img/plants/xsas-гриб.png" width="56" /><br><b>КСАС-гриб</b><br><sub>150 солнц</sub></td>
 <td align="center" width="120"><img src="static/img/plants/солнце-гриб.png" width="56" /><br><b>Солнце-гриб</b><br><sub>25 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/касперский-боб.png" width="56" /><br><b>Касперский-боб</b><br><sub>50 солнц</sub></td>
 </tr>
 <tr>
 <td align="center"><sub>Генерирует солнца каждые несколько секунд</sub></td>
@@ -53,6 +59,7 @@
 <td align="center"><sub>Стреляет в обе стороны</sub></td>
 <td align="center"><sub>Взрывает область 5x5, оставляет глитчи</sub></td>
 <td align="center"><sub>Подсолнух для ночного режима</sub></td>
+<td align="center"><sub>Лечит заражённые троянами растения</sub></td>
 </tr>
 </table>
 
@@ -67,14 +74,16 @@
 <td align="center" width="120"><img src="static/img/zombies/хдд-зомби.png" width="56" /><br><b>HDD</b></td>
 <td align="center" width="120"><img src="static/img/zombies/ссд-зомби.png" width="56" /><br><b>SSD</b></td>
 <td align="center" width="120"><img src="static/img/zombies/winrar-зомби.png" width="56" /><br><b>WinRAR</b></td>
+<td align="center" width="120"><img src="static/img/zombies/троянская-катапульта.jpg" width="56" /><br><b>Троян-катапульта</b></td>
 <td align="center" width="120"><img src="static/img/zombies/ваша-смерть.png" width="56" /><br><b>Ваша Смерть</b></td>
 </tr>
 <tr>
-<td align="center"><sub>Обычный. Ничего особенного.</sub></td>
+<td align="center"><sub>Обычный. Каждый следующий — «копия» файла.</sub></td>
 <td align="center"><sub>Несёт системный файл. Повредишь его - смерть.</sub></td>
 <td align="center"><sub>Медленный, но крепкий. HDD ломается после 3 попаданий.</sub></td>
 <td align="center"><sub>Быстрый, но хрупкий. SSD ломается после 2 попаданий.</sub></td>
 <td align="center"><sub>Архивирует растения. Используй разархиватор!</sub></td>
+<td align="center"><sub>Стреляет троянами. Заражает растения!</sub></td>
 <td align="center"><sub>???</sub></td>
 </tr>
 </table>
@@ -158,7 +167,7 @@ python server.py
 
 A fan-made Plants vs Zombies made by Russian developer where the game is played **on your real Windows desktop**.
 
-**Features:** 7 plants, 7 zombies (including a boss), night mode, BSOD death screens, dev panel with console.
+**Features:** 8 plants, 7 zombies (including a boss), trojan infection mechanic, night mode, BSOD death screens, dev panel with console.
 
 **Quick start:**
 ```

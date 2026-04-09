@@ -67,7 +67,7 @@ function showMainMenu() {
 }
 
 async function onPlayClicked() {
-  SFX.stop('snd-menu');
+  SFX.stopAll();
 
   document.body.style.transition = 'background 0.8s';
   document.body.style.background = '#000';
@@ -184,6 +184,7 @@ function resetFullGameState() {
   S.droppedFiles = [];
   S._sysFolder   = null;
   S._magnetBlocked = {};
+  S._zombieCopyCount = 0;
   S.plants = Array.from({ length: Engine.GRID_ROWS }, () => Array(Engine.GRID_COLS).fill(null));
   S.lawnmowers = Array(Engine.GRID_ROWS).fill(null);
 
@@ -435,7 +436,7 @@ function executeDevCommand(input) {
       if (!type || !rowStr) { consolePrint('Использование: spawn <type> <row 1-5>', 'error'); break; }
       const row = parseInt(rowStr) - 1;
       if (row < 0 || row > 4) { consolePrint('Ряд должен быть 1-5', 'error'); break; }
-      const validTypes = ['zombie','zombie_copy','system_zombie','hdd_zombie','ssd_zombie','winrar_zombie','your_death'];
+      const validTypes = ['zombie','system_zombie','hdd_zombie','ssd_zombie','winrar_zombie','trojan_catapult','your_death'];
       if (!validTypes.includes(type)) {
         consolePrint('Типы: ' + validTypes.join(', '), 'error');
         break;
