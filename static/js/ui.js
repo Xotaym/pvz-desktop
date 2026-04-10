@@ -162,6 +162,8 @@ const PLANT_DISPLAY = [
   { key: 'sun_mushroom',       name: 'солнце-гриб.png',           cost: 25,  file: 'солнце-гриб.png', nightOnly: true },
   { key: 'unarchiver',         name: 'разархиватор.png',          cost: 50,  file: 'разархиватор.png', isItem: true },
   { key: 'kaspersky_bean',    name: 'касп-боб.png',              cost: 50,  file: 'касперский-боб.png', isItem: true },
+  { key: 'daisy',             name: 'ромашка.jpg',               cost: 75,  file: 'ромашка.jpg' },
+  { key: 'cherry',            name: 'вишня.webp',                cost: 80,  file: 'вишня.webp' },
 ];
 
 function bindPlantDragHandlers() {
@@ -385,6 +387,7 @@ function clearPlantDragState() {
   plantDragState.lastTime = 0;
   plantDragState.velocityX = 0;
   Engine.State.selectedPlant = null;
+  Engine.State._freePlant = null;
   document.body.classList.remove('plant-dragging');
   document.getElementById('grid-container')?.classList.remove('dragging-grid');
   document.querySelectorAll('.plant-card').forEach(card => card.classList.remove('selected', 'dragging'));
@@ -416,6 +419,27 @@ function startPlantDrag(key, event) {
   document.getElementById('grid-container')?.classList.add('dragging-grid');
 
   setPlantSelection(key);
+  updatePlantDrag(event.clientX, event.clientY);
+}
+
+function startFreePlantDrag(key, event) {
+  const cfg = Engine.PLANTS[key];
+  if (!cfg || Engine.State.paused || Engine.State.gameOver) return;
+
+  cancelPlantDrag();
+  bindPlantDragHandlers();
+
+  plantDragState.active = true;
+  plantDragState.key = key;
+  plantDragState.previewEl = createPlantPreview({ key, file: cfg.file });
+  plantDragState.lastX = event.clientX;
+  plantDragState.lastY = event.clientY;
+  plantDragState.lastTime = performance.now();
+  plantDragState.velocityX = 0;
+  document.body.classList.add('plant-dragging');
+  document.getElementById('grid-container')?.classList.add('dragging-grid');
+
+  Engine.State.selectedPlant = key;
   updatePlantDrag(event.clientX, event.clientY);
 }
 
@@ -537,6 +561,7 @@ function returnToMenu() {
   Engine.clearAllTimers();
   Game.cleanupWaves();
 
+  SFX.stopAll();
   resetGameState();
 
   hideScreen('game');
@@ -798,6 +823,7 @@ window.UI = {
   cancelPlantDrag,
   startFileDrag,
   cancelFileDrag,
+  startFreePlantDrag,
   showSysFolder,
   hideSysFolder,
 };

@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.1-2ecc71?style=flat-square" />
+  <img src="https://img.shields.io/badge/version-0.2.4-2ecc71?style=flat-square" />
   <img src="https://img.shields.io/badge/Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" />
   <img src="https://img.shields.io/badge/Python%203.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
 </p>
@@ -50,7 +50,10 @@
 <td align="center" width="120"><img src="static/img/plants/сиамский-горохострел.png" width="56" /><br><b>Сиамский</b><br><sub>125 солнц</sub></td>
 <td align="center" width="120"><img src="static/img/plants/xsas-гриб.png" width="56" /><br><b>КСАС-гриб</b><br><sub>150 солнц</sub></td>
 <td align="center" width="120"><img src="static/img/plants/солнце-гриб.png" width="56" /><br><b>Солнце-гриб</b><br><sub>25 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/разархиватор.png" width="56" /><br><b>Разархиватор</b><br><sub>50 солнц</sub></td>
 <td align="center" width="120"><img src="static/img/plants/касперский-боб.png" width="56" /><br><b>Касперский-боб</b><br><sub>50 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/ромашка.jpg" width="56" /><br><b>Ромашка</b><br><sub>75 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/вишня.webp" width="56" /><br><b>Вишня</b><br><sub>80 солнц</sub></td>
 </tr>
 <tr>
 <td align="center"><sub>Генерирует солнца каждые несколько секунд</sub></td>
@@ -59,7 +62,10 @@
 <td align="center"><sub>Стреляет в обе стороны</sub></td>
 <td align="center"><sub>Взрывает область 5x5, оставляет глитчи</sub></td>
 <td align="center"><sub>Подсолнух для ночного режима</sub></td>
+<td align="center"><sub>Разархивирует заархивированные растения</sub></td>
 <td align="center"><sub>Лечит заражённые троянами растения</sub></td>
+<td align="center"><sub>Случайный дроп каждые 8-12с</sub></td>
+<td align="center"><sub>3x3 взрыв, макс. 5 зомби</sub></td>
 </tr>
 </table>
 
@@ -167,7 +173,7 @@ python server.py
 
 A fan-made Plants vs Zombies made by Russian developer where the game is played **on your real Windows desktop**.
 
-**Features:** 8 plants, 7 zombies (including a boss), trojan infection mechanic, night mode, BSOD death screens, dev panel with console.
+**Features:** 10 plants, 7 zombies (including a boss), trojan infection mechanic, night mode, BSOD death screens, dev panel with console.
 
 **Quick start:**
 ```

@@ -25,6 +25,7 @@ async function init() {
     UI.hideScreen('docs');
   });
   document.getElementById('btn-end-menu').addEventListener('click', () => {
+    SFX.stopAll();
     UI.hideScreen('end');
     UI.showScreen('menu');
     SFX.play('snd-menu');
@@ -81,7 +82,7 @@ async function onPlayClicked() {
 
 async function startGame() {
   GameLog.log('GAME', 'Starting new game');
-  SFX.stop('snd-menu');
+  SFX.stopAll();
   await UI.loadDesktopData();
 
   const S = Engine.State;
@@ -185,6 +186,7 @@ function resetFullGameState() {
   S._sysFolder   = null;
   S._magnetBlocked = {};
   S._zombieCopyCount = 0;
+  S._freePlant = null;
   S.plants = Array.from({ length: Engine.GRID_ROWS }, () => Array(Engine.GRID_COLS).fill(null));
   S.lawnmowers = Array(Engine.GRID_ROWS).fill(null);
 

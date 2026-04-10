@@ -67,7 +67,7 @@ function startWave(waveIndex) {
   cfg.zombies.forEach(({ type, row, delay }) => {
     function trySpawn() {
       if (S.gameOver) return;
-      if (S._devPaused) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
+      if (S.paused || S._devPaused) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
       Engine.spawnZombie(type, row);
       currentWaveZombiesSpawned++;
     }
@@ -78,7 +78,7 @@ function startWave(waveIndex) {
   waveCheckInterval = setInterval(() => {
     if (S.gameOver) { clearInterval(waveCheckInterval); return; }
     if (!waveActive) { clearInterval(waveCheckInterval); return; }
-    if (S._devPaused) return;
+    if (S.paused || S._devPaused) return;
     if (currentWaveZombiesSpawned < currentWaveZombiesTotal) return;
     if (S.zombies.filter(z => z.alive).length === 0) {
       GameLog.log('WAVE', `Wave ${waveIndex + 1} complete, all zombies dead`);
@@ -86,7 +86,7 @@ function startWave(waveIndex) {
       waveActive = false;
       function tryNextWave() {
         if (S.gameOver) return;
-        if (S._devPaused) { waveTimeouts.push(setTimeout(tryNextWave, 500)); return; }
+        if (S.paused || S._devPaused) { waveTimeouts.push(setTimeout(tryNextWave, 500)); return; }
         startWave(waveIndex + 1);
       }
       waveTimeouts.push(setTimeout(tryNextWave, 5000));
@@ -240,6 +240,16 @@ const DEATH_REASONS = {
     title: 'Папка-магнит уничтожена',
     text: 'Зомби съели папку-магнит, которая удерживала системный файл. Файл потерян — критический сбой!',
     tip: 'Совет: Защищайте папку-магнит горохострелами! Или быстрее перетащите файл в System32.',
+  },
+  trojan_file_destroyed: {
+    title: 'Троян уничтожил системный файл',
+    text: 'Троянский вирус попал в незащищённый системный файл. Файл повреждён — критическая ошибка!',
+    tip: 'Совет: Не оставляйте системные файлы на полу! Быстрее тащите их в System32.',
+  },
+  trojan_magnet_infected: {
+    title: 'Троян заразил хранилище файлов',
+    text: 'Троянский вирус попал в папку-магнит, которая удерживала системный файл. Файл заражён!',
+    tip: 'Совет: Защищайте папку-магнит от троянской катапульты!',
   },
 };
 

@@ -102,6 +102,7 @@ const State = {
   _sysFolder:      null,
   _magnetBlocked:  {},
   _zombieCopyCount: 0,
+  _freePlant:      null,
 
   _timers: {},
 };
@@ -195,7 +196,9 @@ function canPlacePlant(type, col, row) {
 
 function tryPlacePlant(type, col, row) {
   if (!type || !PLANTS[type]) return false;
-  if (State.sun < PLANTS[type].cost) {
+  const free = State._freePlant === type;
+
+  if (!free && State.sun < PLANTS[type].cost) {
     GameLog.log('PLANT', `Not enough sun for ${type} (have ${State.sun}, need ${PLANTS[type].cost})`);
     flashSunCounter();
     return false;
@@ -204,8 +207,9 @@ function tryPlacePlant(type, col, row) {
   if (type === 'unarchiver') {
     const plant = State.plants[row]?.[col];
     if (!plant || !plant.archived) return false;
-    State.sun -= PLANTS[type].cost;
-    GameLog.log('PLANT', `Unarchived plant at [${col},${row}], sun=${State.sun}`);
+    if (!free) State.sun -= PLANTS[type].cost;
+    State._freePlant = null;
+    GameLog.log('PLANT', `Unarchived plant at [${col},${row}], sun=${State.sun}${free ? ' (free)' : ''}`);
     unarchivePlant(col, row);
     spawnParticles(plant.el.offsetLeft + CELL_W/2, plant.el.offsetTop + CELL_H/2, '#f39c12', 8);
     UI.updateSun();
@@ -216,8 +220,9 @@ function tryPlacePlant(type, col, row) {
   if (type === 'kaspersky_bean') {
     const plant = State.plants[row]?.[col];
     if (!plant || !plant.infected) return false;
-    State.sun -= PLANTS[type].cost;
-    GameLog.log('PLANT', `Kaspersky bean cured plant at [${col},${row}], sun=${State.sun}`);
+    if (!free) State.sun -= PLANTS[type].cost;
+    State._freePlant = null;
+    GameLog.log('PLANT', `Kaspersky bean cured plant at [${col},${row}], sun=${State.sun}${free ? ' (free)' : ''}`);
     cureInfection(col, row);
     spawnParticles(plant.el.offsetLeft + CELL_W/2, plant.el.offsetTop + CELL_H/2, '#00ff00', 8);
     UI.updateSun();
@@ -225,10 +230,16 @@ function tryPlacePlant(type, col, row) {
     return true;
   }
 
-  if (!canPlacePlant(type, col, row)) return false;
+  if (!free && !canPlacePlant(type, col, row)) return false;
+  if (free) {
+    if (State.paused || State.gameOver) return false;
+    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return false;
+    if (State.plants[row][col]) return false;
+  }
   placePlant(type, col, row);
-  State.sun -= PLANTS[type].cost;
-  GameLog.log('PLANT', `Placed ${type} at [${col},${row}], sun=${State.sun}`);
+  if (!free) State.sun -= PLANTS[type].cost;
+  State._freePlant = null;
+  GameLog.log('PLANT', `Placed ${type} at [${col},${row}], sun=${State.sun}${free ? ' (free/daisy)' : ''}`);
   UI.updateSun();
   UI.updatePlantBar();
   return true;
@@ -324,6 +335,31 @@ const PLANTS = {
     displayName: 'касп-боб.png',
     isItem: true,
   },
+  daisy: {
+    name: 'ромашка.jpg',
+    cost: 75,
+    file: 'ромашка.jpg',
+    folder: 'plants',
+    shootInterval: null,
+    sunInterval: null,
+    cooldown: 8000,
+    displayName: 'ромашка.jpg',
+    dropInterval: [8000, 12000],
+  },
+  cherry: {
+    name: 'вишня.webp',
+    cost: 80,
+    file: 'вишня.webp',
+    folder: 'plants',
+    shootInterval: null,
+    sunInterval: null,
+    cooldown: 0,
+    displayName: 'вишня.webp',
+    isExplosive: true,
+    explosionRadius: 1,
+    explosionDelay: 2000,
+    maxTargets: 5,
+  },
 };
 
 function placePlant(type, col, row) {
@@ -355,15 +391,24 @@ function placePlant(type, col, row) {
     scheduleShoot(plantData);
   } else if (type === 'folder_magnet') {
     scheduleFolderMagnet(plantData);
+  } else if (type === 'daisy') {
+    scheduleDaisy(plantData);
   } else if (type === 'xsas_mushroom') {
     plantData._xsasPlanted = performance.now();
     plantData._xsasDelay = 3000;
-    const bombKey = `xsas_${col}_${row}`;
-    State._timers[bombKey] = setTimeout(() => {
+    gameTimer(`xsas_${col}_${row}`, () => {
       if (!State.plants[row][col]) return;
       if (State.plants[row][col].archived || State.plants[row][col].infected) return;
       triggerXSASExplosion(plantData);
     }, 3000);
+  } else if (type === 'cherry') {
+    plantData._cherryPlanted = performance.now();
+    plantData._cherryDelay = PLANTS.cherry.explosionDelay;
+    gameTimer(`cherry_${col}_${row}`, () => {
+      if (!State.plants[row][col]) return;
+      if (State.plants[row][col].archived || State.plants[row][col].infected) return;
+      triggerCherryExplosion(plantData);
+    }, PLANTS.cherry.explosionDelay);
   }
 
   el.style.transform = 'scale(0)';
@@ -391,9 +436,8 @@ function removePlant(col, row, safe) {
     }
   }
 
-  if (!safe && p.infected && p.trojanCount > 0) {
-    spawnInfectedZombie(col, row, p.trojanCount);
-  }
+  const shouldSpawnZombie = !safe && p.infected && p.trojanCount > 0;
+  const savedTrojanCount = p.trojanCount || 0;
 
   GameLog.log('PLANT', `Removed ${p.type} at [${col},${row}]${safe ? ' (safe)' : ''}`);
   p.el.remove();
@@ -402,6 +446,12 @@ function removePlant(col, row, safe) {
   clearTimer(`plant_shoot_${col}_${row}`);
   clearTimer(`magnet_${col}_${row}`);
   clearTimer(`xsas_${col}_${row}`);
+  clearTimer(`cherry_${col}_${row}`);
+  clearTimer(`plant_drop_${col}_${row}`);
+
+  if (shouldSpawnZombie) {
+    spawnInfectedZombie(col, row, savedTrojanCount);
+  }
 }
 
 function clearTimer(key) {
@@ -438,6 +488,123 @@ function spawnPlantSun(plant) {
   const sunVal = cfg && cfg.sunValue ? cfg.sunValue : 25;
   spawnSun(sx, sy, false, sunVal);
   SFX.play('snd-sun');
+}
+
+function scheduleDaisy(plant) {
+  const cfg = PLANTS.daisy;
+  const d = rndInt(cfg.dropInterval[0], cfg.dropInterval[1]);
+  const key = `plant_drop_${plant.col}_${plant.row}`;
+  State._timers[key] = setTimeout(() => {
+    if (!State.plants[plant.row][plant.col]) return;
+    if (State.plants[plant.row][plant.col].archived) return;
+    if (State.plants[plant.row][plant.col].infected) return;
+    if (State.gameOver) return;
+    if (State.paused) { scheduleDaisy(plant); return; }
+    daisyDrop(plant);
+    scheduleDaisy(plant);
+  }, d);
+}
+
+function daisyDrop(plant) {
+  const pos = cellToPixel(plant.col, plant.row);
+  const roll = Math.random() * 100;
+
+  if (roll < 55) {
+    const plantRolls = [
+      { type: 'sunflower', weight: 15 },
+      { type: 'peashooter', weight: 14 },
+      { type: 'folder_magnet', weight: 10 },
+      { type: 'sun_mushroom', weight: 8 },
+      { type: 'siamese_peashooter', weight: 5 },
+      { type: 'xsas_mushroom', weight: 3 },
+    ];
+    let total = 0;
+    const r2 = Math.random() * plantRolls.reduce((s, p) => s + p.weight, 0);
+    let picked = plantRolls[0].type;
+    for (const p of plantRolls) {
+      total += p.weight;
+      if (r2 < total) { picked = p.type; break; }
+    }
+    spawnDaisyPlantDrop(plant, picked);
+    GameLog.log('DAISY', `Dropped plant ${picked} at [${plant.col},${plant.row}]`);
+  } else if (roll < 70) {
+    const fx = pos.x + rnd(-10, 20);
+    const fy = pos.y + rnd(10, 30);
+    dropSystemFile(fx, fy, plant.row);
+    spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#ff4444', 6);
+    GameLog.log('DAISY', `Dropped sys file at [${plant.col},${plant.row}]`);
+  } else if (roll < 85) {
+    const zombieRolls = [
+      { type: 'zombie', weight: 8 },
+      { type: 'hdd_zombie', weight: 4 },
+      { type: 'ssd_zombie', weight: 2 },
+      { type: 'trojan_catapult', weight: 1 },
+    ];
+    let total = 0;
+    const r2 = Math.random() * zombieRolls.reduce((s, z) => s + z.weight, 0);
+    let picked = zombieRolls[0].type;
+    for (const z of zombieRolls) {
+      total += z.weight;
+      if (r2 < total) { picked = z.type; break; }
+    }
+    const zombie = spawnZombie(picked, plant.row);
+    if (zombie) {
+      zombie.x = pos.x + CELL_W;
+      posEl(zombie.el, zombie.x, zombie.y);
+    }
+    spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#8b00ff', 6);
+    GameLog.log('DAISY', `Dropped zombie ${picked} at [${plant.col},${plant.row}]`);
+  } else {
+    const sx = pos.x + CELL_W / 2 - 25;
+    const sy = pos.y + 20;
+    spawnSun(sx, sy, false, 25);
+    spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#ffd700', 6);
+    GameLog.log('DAISY', `Dropped sun at [${plant.col},${plant.row}]`);
+  }
+
+  SFX.play('snd-sun');
+}
+
+function spawnDaisyPlantDrop(daisy, plantType) {
+  const pos = cellToPixel(daisy.col, daisy.row);
+  const cfg = PLANTS[plantType];
+  if (!cfg) return;
+
+  const el = makeEl('div', 'daisy-drop-entity icon-entity', sunsLayer());
+  el.style.position = 'absolute';
+  const dx = pos.x + rnd(-15, 25);
+  const dy = pos.y + rnd(15, 40);
+  posEl(el, dx, dy);
+
+  const img = makeEl('img', 'icon-img', el);
+  img.src = `static/img/plants/${cfg.file}`;
+  img.draggable = false;
+  img.onerror = () => { img.remove(); el.textContent = '🌱'; el.style.fontSize = '28px'; };
+
+  addFilenameLabel(el, cfg.displayName || cfg.file);
+
+  el.style.transform = 'scale(0) translateY(-10px)';
+  el.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+  requestAnimationFrame(() => { el.style.transform = 'scale(1) translateY(0)'; });
+
+  spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#7fff00', 6);
+
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (State.paused || State.gameOver) return;
+    el.remove();
+    State._freePlant = plantType;
+    UI.startFreePlantDrag(plantType, e);
+  });
+
+  setTimeout(() => {
+    if (el.parentNode) {
+      el.style.transition = 'opacity 0.4s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 400);
+    }
+  }, 12000);
 }
 
 function scheduleShoot(plant) {
@@ -1117,6 +1284,11 @@ function startGameLoop() {
   GameLog.log('GAME', 'Game loop started');
   lastTime = performance.now();
   requestAnimationFrame(gameLoop);
+  gameInterval('cursik_watchdog', () => {
+    if (!State.cursik.busy && State.cursik.queue.length > 0) {
+      processCursikQueue();
+    }
+  }, 1000);
 }
 
 function updateCursikIdle() {
@@ -1196,19 +1368,31 @@ function fireTrojan(zombie) {
   for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c < GRID_COLS; c++) {
       const p = State.plants[r][c];
-      if (p && !p.archived) targets.push({ col: c, row: r });
+      if (p && !p.archived) targets.push({ kind: 'plant', col: c, row: r });
+    }
+  }
+  for (const f of State.droppedFiles) {
+    if (!f.collected && !f.heldByMagnet) {
+      targets.push({ kind: 'file', fileObj: f, x: f.x, y: f.y });
     }
   }
   if (targets.length === 0) return;
 
   const target = targets[rndInt(0, targets.length - 1)];
-  const targetPos = cellToPixel(target.col, target.row);
-  GameLog.log('TROJAN', `Catapult #${zombie.id} fires trojan at plant [${target.col},${target.row}]`);
+  let endX, endY;
+  if (target.kind === 'plant') {
+    const targetPos = cellToPixel(target.col, target.row);
+    endX = targetPos.x + CELL_W / 2 - 16;
+    endY = targetPos.y + CELL_H / 2 - 16;
+    GameLog.log('TROJAN', `Catapult #${zombie.id} fires trojan at plant [${target.col},${target.row}]`);
+  } else {
+    endX = target.x + 8;
+    endY = target.y + 8;
+    GameLog.log('TROJAN', `Catapult #${zombie.id} fires trojan at dropped file #${target.fileObj.id}`);
+  }
 
   const startX = zombie.x + 20;
   const startY = zombie.y;
-  const endX = targetPos.x + CELL_W / 2 - 16;
-  const endY = targetPos.y + CELL_H / 2 - 16;
 
   const proj = makeEl('div', 'trojan-projectile', sunsLayer());
   const projImg = makeEl('img', null, proj);
@@ -1245,7 +1429,25 @@ function fireTrojan(zombie) {
       proj.remove();
       mc.remove();
       spawnParticles(endX + 16, endY + 16, '#8b00ff', 6);
-      infectPlant(target.col, target.row);
+      if (target.kind === 'file') {
+        GameLog.log('BSOD', `Trojan destroyed dropped sys file #${target.fileObj.id} → BSOD`);
+        spawnParticles(endX + 16, endY + 16, '#ff0000', 12);
+        Game.triggerGameOver(null, 'trojan_file_destroyed');
+      } else {
+        const plant = State.plants[target.row]?.[target.col];
+        if (plant && plant.type === 'folder_magnet') {
+          const heldFile = State.droppedFiles.find(f =>
+            !f.collected && f.heldByMagnet && f.magnetCol === target.col && f.magnetRow === target.row
+          );
+          if (heldFile) {
+            GameLog.log('BSOD', `Trojan infected folder_magnet with held file at [${target.col},${target.row}] → BSOD`);
+            spawnParticles(endX + 16, endY + 16, '#ff0000', 12);
+            Game.triggerGameOver(null, 'trojan_magnet_infected');
+            return;
+          }
+        }
+        infectPlant(target.col, target.row);
+      }
     }
   }
   requestAnimationFrame(animateArc);
@@ -1260,10 +1462,16 @@ function infectPlant(col, row) {
     plant.trojanCount = 1;
     clearTimer(`plant_sun_${col}_${row}`);
     clearTimer(`plant_shoot_${col}_${row}`);
+    clearTimer(`plant_drop_${col}_${row}`);
     if (plant.type === 'xsas_mushroom') {
       const elapsed = performance.now() - (plant._xsasPlanted || 0);
       plant._xsasRemaining = Math.max(0, (plant._xsasDelay || 3000) - elapsed);
       clearTimer(`xsas_${col}_${row}`);
+    }
+    if (plant.type === 'cherry') {
+      const elapsed = performance.now() - (plant._cherryPlanted || 0);
+      plant._cherryRemaining = Math.max(0, (plant._cherryDelay || 2000) - elapsed);
+      clearTimer(`cherry_${col}_${row}`);
     }
     GameLog.log('TROJAN', `Plant ${plant.type} at [${col},${row}] infected (count=1)`);
   } else {
@@ -1301,15 +1509,24 @@ function cureInfection(col, row) {
   if (plant.type === 'sunflower' || plant.type === 'sun_mushroom') scheduleSunflower(plant);
   else if (plant.type === 'peashooter' || plant.type === 'siamese_peashooter') scheduleShoot(plant);
   else if (plant.type === 'folder_magnet') scheduleFolderMagnet(plant);
+  else if (plant.type === 'daisy') scheduleDaisy(plant);
   else if (plant.type === 'xsas_mushroom') {
     const remaining = plant._xsasRemaining != null ? plant._xsasRemaining : 3000;
     plant._xsasPlanted = performance.now();
     plant._xsasDelay = remaining;
-    const bombKey = `xsas_${col}_${row}`;
-    State._timers[bombKey] = setTimeout(() => {
+    gameTimer(`xsas_${col}_${row}`, () => {
       if (!State.plants[row][col]) return;
       if (State.plants[row][col].archived || State.plants[row][col].infected) return;
       triggerXSASExplosion(plant);
+    }, remaining);
+  } else if (plant.type === 'cherry') {
+    const remaining = plant._cherryRemaining != null ? plant._cherryRemaining : 2000;
+    plant._cherryPlanted = performance.now();
+    plant._cherryDelay = remaining;
+    gameTimer(`cherry_${col}_${row}`, () => {
+      if (!State.plants[row][col]) return;
+      if (State.plants[row][col].archived || State.plants[row][col].infected) return;
+      triggerCherryExplosion(plant);
     }, remaining);
   }
 }
@@ -1410,6 +1627,75 @@ function triggerXSASExplosion(plant) {
   }
 }
 
+function triggerCherryExplosion(plant) {
+  const cx = plant.col;
+  const cy = plant.row;
+  const radius = PLANTS.cherry.explosionRadius;
+  const pos = cellToPixel(cx, cy);
+
+  GameLog.log('CHERRY', `Cherry explosion at [${cx},${cy}], radius=${radius}`);
+  removePlant(cx, cy, true);
+
+  spawnParticles(pos.x + CELL_W/2, pos.y + CELL_H/2, '#ff3300', 20);
+  spawnParticles(pos.x + CELL_W/2, pos.y + CELL_H/2, '#ff8800', 12);
+  SFX.play('snd-explosion');
+
+  const topLeft = cellToPixel(Math.max(0, cx - radius), Math.max(0, cy - radius));
+  const botRight = cellToPixel(Math.min(GRID_COLS - 1, cx + radius), Math.min(GRID_ROWS - 1, cy + radius));
+  const explEl = makeEl('div', 'cherry-explosion', entitiesLayer());
+  explEl.style.position = 'absolute';
+  explEl.style.left = topLeft.x + 'px';
+  explEl.style.top = topLeft.y + 'px';
+  explEl.style.width = (botRight.x + CELL_W - topLeft.x) + 'px';
+  explEl.style.height = (botRight.y + CELL_H - topLeft.y) + 'px';
+  explEl.style.zIndex = '50';
+  explEl.style.pointerEvents = 'none';
+  const explImg = makeEl('img', '', explEl);
+  explImg.src = 'static/effects/взрыв.png';
+  explImg.style.width = '100%';
+  explImg.style.height = '100%';
+  explImg.draggable = false;
+  setTimeout(() => explEl.remove(), 800);
+
+  const o = getGridOrigin();
+  let hitCursikZombie = false;
+  const inRange = [];
+  for (const z of State.zombies) {
+    if (!z.alive || z.isBoss) continue;
+    const zCol = Math.floor((z.x - o.x) / CELL_W);
+    if (Math.abs(zCol - cx) <= radius && Math.abs(z.row - cy) <= radius) {
+      inRange.push(z);
+    }
+  }
+
+  inRange.sort((a, b) => {
+    const sa = (a.armorHits || 0) + a.hp;
+    const sb = (b.armorHits || 0) + b.hp;
+    return sb - sa;
+  });
+  const targets = inRange.slice(0, PLANTS.cherry.maxTargets);
+
+  for (const z of targets) {
+    if (State.cursik.dragZombieId === z.id) hitCursikZombie = true;
+    killZombie(z, { dropFile: true });
+  }
+
+  if (hitCursikZombie) {
+    GameLog.log('CHERRY', 'Cherry killed Cursik\'s dragged zombie');
+    const ck = State.cursik;
+    const bubble = ck.bubbleEl;
+    if (bubble) {
+      bubble.textContent = 'Ай!';
+      bubble.classList.remove('hidden');
+      setTimeout(() => bubble.classList.add('hidden'), 1200);
+    }
+    if (ck.el) {
+      ck.el.classList.add('cursik-flinch');
+      setTimeout(() => ck.el.classList.remove('cursik-flinch'), 500);
+    }
+  }
+}
+
 function checkPlantsEaten() {
   State.zombies.filter(z => z.alive).forEach(zombie => {
     const o = getGridOrigin();
@@ -1434,6 +1720,11 @@ function checkPlantsEaten() {
               const elapsed = performance.now() - (p._xsasPlanted || 0);
               p._xsasRemaining = Math.max(0, (p._xsasDelay || 3000) - elapsed);
               clearTimer(`xsas_${col}_${zombie.row}`);
+            }
+            if (p.type === 'cherry') {
+              const elapsed = performance.now() - (p._cherryPlanted || 0);
+              p._cherryRemaining = Math.max(0, (p._cherryDelay || 2000) - elapsed);
+              clearTimer(`cherry_${col}_${zombie.row}`);
             }
             addFilenameLabel(p.el, '.rar', 'archive-label');
           }
@@ -1471,18 +1762,27 @@ function unarchivePlant(col, row) {
   plant.el.style.opacity = '';
   const archLabel = plant.el.querySelector('.archive-label');
   if (archLabel) archLabel.remove();
-  if (plant.type === 'sunflower') scheduleSunflower(plant);
+  if (plant.type === 'sunflower' || plant.type === 'sun_mushroom') scheduleSunflower(plant);
   else if (plant.type === 'peashooter') scheduleShoot(plant);
   else if (plant.type === 'siamese_peashooter') scheduleShoot(plant);
+  else if (plant.type === 'daisy') scheduleDaisy(plant);
   else if (plant.type === 'xsas_mushroom') {
     const remaining = plant._xsasRemaining != null ? plant._xsasRemaining : 3000;
     plant._xsasPlanted = performance.now();
     plant._xsasDelay = remaining;
-    const bombKey = `xsas_${col}_${row}`;
-    State._timers[bombKey] = setTimeout(() => {
+    gameTimer(`xsas_${col}_${row}`, () => {
       if (!State.plants[row][col]) return;
       if (State.plants[row][col].archived) return;
       triggerXSASExplosion(plant);
+    }, remaining);
+  } else if (plant.type === 'cherry') {
+    const remaining = plant._cherryRemaining != null ? plant._cherryRemaining : 2000;
+    plant._cherryPlanted = performance.now();
+    plant._cherryDelay = remaining;
+    gameTimer(`cherry_${col}_${row}`, () => {
+      if (!State.plants[row][col]) return;
+      if (State.plants[row][col].archived) return;
+      triggerCherryExplosion(plant);
     }, remaining);
   }
   return true;
