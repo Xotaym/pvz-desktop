@@ -91,7 +91,6 @@ const State = {
   },
 
   nightMode:     false,
-  _devPaused:    false,
   selectedPlant: null,
   nextZombieId: 0,
   nextPeaId:    0,
@@ -103,6 +102,8 @@ const State = {
   _magnetBlocked:  {},
   _zombieCopyCount: 0,
   _freePlant:      null,
+  _customPlants:   null,
+  _customWave:     false,
 
   _timers: {},
 };
@@ -1115,6 +1116,10 @@ function animateZombieMove(zombie, targetX, duration, cb) {
 }
 
 function spawnLawnmowers() {
+  State.lawnmowers.forEach((m, i) => {
+    if (m && m.el) m.el.remove();
+    State.lawnmowers[i] = null;
+  });
   for (let row = 0; row < GRID_ROWS; row++) {
     spawnLawnmower(row);
   }

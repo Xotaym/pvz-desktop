@@ -67,7 +67,7 @@ function startWave(waveIndex) {
   cfg.zombies.forEach(({ type, row, delay }) => {
     function trySpawn() {
       if (S.gameOver) return;
-      if (S.paused || S._devPaused) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
+      if (S.paused) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
       Engine.spawnZombie(type, row);
       currentWaveZombiesSpawned++;
     }
@@ -78,7 +78,7 @@ function startWave(waveIndex) {
   waveCheckInterval = setInterval(() => {
     if (S.gameOver) { clearInterval(waveCheckInterval); return; }
     if (!waveActive) { clearInterval(waveCheckInterval); return; }
-    if (S.paused || S._devPaused) return;
+    if (S.paused) return;
     if (currentWaveZombiesSpawned < currentWaveZombiesTotal) return;
     if (S.zombies.filter(z => z.alive).length === 0) {
       GameLog.log('WAVE', `Wave ${waveIndex + 1} complete, all zombies dead`);
@@ -86,7 +86,7 @@ function startWave(waveIndex) {
       waveActive = false;
       function tryNextWave() {
         if (S.gameOver) return;
-        if (S.paused || S._devPaused) { waveTimeouts.push(setTimeout(tryNextWave, 500)); return; }
+        if (S.paused) { waveTimeouts.push(setTimeout(tryNextWave, 500)); return; }
         startWave(waveIndex + 1);
       }
       waveTimeouts.push(setTimeout(tryNextWave, 5000));
@@ -664,6 +664,99 @@ function cleanupWaves() {
   currentWaveZombiesTotal = 0;
 }
 
+function startCustomWave(config) {
+  cleanupWaves();
+  const S = Engine.State;
+
+  [...S.zombies].forEach(z => { if (z.alive) Engine.killZombie(z, true); });
+
+  S._customWave = true;
+  if (config.startSun != null) { S.sun = config.startSun; } else { S.sun = 150; }
+  UI.updateSun();
+
+  if (config.nightMode != null) S.nightMode = !!config.nightMode;
+  S._customPlants = Array.isArray(config.plants) ? config.plants : null;
+
+  if (config.lawnmowers === false) {
+    S.lawnmowers.forEach((m, i) => {
+      if (m && m.el) m.el.remove();
+      S.lawnmowers[i] = null;
+    });
+  } else {
+    Engine.spawnLawnmowers();
+  }
+
+  UI.buildPlantBar();
+
+  S._customWaveConfigs = config.waves;
+  S.maxWaves = config.waves.length;
+  S.wave = 0;
+  UI.updateWave();
+
+  startCustomWaveStep(0);
+}
+
+function startCustomWaveStep(index) {
+  const S = Engine.State;
+  if (!S._customWave) return;
+  if (index >= S._customWaveConfigs.length) {
+    GameLog.log('CWAVE', 'All custom waves complete!');
+    showWaveBanner('WIN');
+    stopCustomWave();
+    return;
+  }
+
+  const cfg = S._customWaveConfigs[index];
+  S.wave = index + 1;
+  UI.updateWave();
+  waveActive = true;
+  currentWaveZombiesTotal = cfg.zombies.length;
+  currentWaveZombiesSpawned = 0;
+
+  showWaveBanner(S.wave);
+  GameLog.log('CWAVE', `Custom wave ${S.wave}/${S.maxWaves}, zombies: ${cfg.zombies.length}`);
+
+  cfg.zombies.forEach(({ type, row, delay }) => {
+    const r = (row >= 1 ? row - 1 : row);
+    function trySpawn() {
+      if (S.gameOver || !S._customWave) return;
+      if (S.paused) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
+      Engine.spawnZombie(type, Math.max(0, Math.min(4, r)));
+      currentWaveZombiesSpawned++;
+    }
+    waveTimeouts.push(setTimeout(trySpawn, (delay || 0) + 2000));
+  });
+
+  if (waveCheckInterval) clearInterval(waveCheckInterval);
+  waveCheckInterval = setInterval(() => {
+    if (S.gameOver || !S._customWave) { clearInterval(waveCheckInterval); return; }
+    if (!waveActive) { clearInterval(waveCheckInterval); return; }
+    if (S.paused) return;
+    if (currentWaveZombiesSpawned < currentWaveZombiesTotal) return;
+    if (S.zombies.filter(z => z.alive).length === 0) {
+      GameLog.log('CWAVE', `Custom wave ${index + 1} complete`);
+      clearInterval(waveCheckInterval);
+      waveActive = false;
+      function tryNext() {
+        if (S.gameOver || !S._customWave) return;
+        if (S.paused) { waveTimeouts.push(setTimeout(tryNext, 500)); return; }
+        startCustomWaveStep(index + 1);
+      }
+      waveTimeouts.push(setTimeout(tryNext, 5000));
+    }
+  }, 1000);
+}
+
+function stopCustomWave() {
+  cleanupWaves();
+  const S = Engine.State;
+  [...S.zombies].forEach(z => { if (z.alive) Engine.killZombie(z, true); });
+  S._customWave = false;
+  S._customWaveConfigs = null;
+  S._customPlants = null;
+  UI.buildPlantBar();
+}
+
 window.Game = {
   startWave,
   startTutorial,
@@ -672,4 +765,6 @@ window.Game = {
   triggerGameOver,
   showWaveBanner,
   cleanupWaves,
+  startCustomWave,
+  stopCustomWave,
 };

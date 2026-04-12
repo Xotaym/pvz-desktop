@@ -156,6 +156,7 @@ async function startGame() {
 }
 
 function startWaves() {
+  if (localStorage.getItem('pvz_devmode') === 'true') return;
   setTimeout(() => {
     Game.startWave(0);
   }, 3000);
@@ -171,7 +172,6 @@ function resetFullGameState() {
   S.paused = false;
   S.gameOver = false;
   S.started  = false;
-  S._devPaused = false;
   S.selectedPlant = null;
   S.zombies = [];
   S.peas    = [];
@@ -187,6 +187,9 @@ function resetFullGameState() {
   S._magnetBlocked = {};
   S._zombieCopyCount = 0;
   S._freePlant = null;
+  S._customPlants = null;
+  S._customWave = false;
+  S._customWaveConfigs = null;
   S.plants = Array.from({ length: Engine.GRID_ROWS }, () => Array(Engine.GRID_COLS).fill(null));
   S.lawnmowers = Array(Engine.GRID_ROWS).fill(null);
 
@@ -223,15 +226,9 @@ function resetFullGameState() {
 
 let devPanelInited = false;
 
-function setDevPanelPause(paused) {
-  Engine.State._devPaused = paused;
-}
-
 function toggleDevPanel(panel) {
   panel.classList.toggle('hidden');
-  const isOpen = !panel.classList.contains('hidden');
-  setDevPanelPause(isOpen);
-  if (isOpen) {
+  if (!panel.classList.contains('hidden')) {
     const consoleTab = document.getElementById('dev-tab-console');
     if (consoleTab && consoleTab.classList.contains('active')) {
       document.getElementById('dev-console-input')?.focus();
@@ -241,7 +238,6 @@ function toggleDevPanel(panel) {
 
 function closeDevPanel(panel) {
   panel.classList.add('hidden');
-  setDevPanelPause(false);
 }
 
 function initDevPanel() {
@@ -315,6 +311,65 @@ function initDevPanel() {
       });
     });
 
+    let _cwaveCache = [];
+    function loadCwaveList() {
+      const sel = document.getElementById('dev-cwave-select');
+      const info = document.getElementById('dev-cwave-info');
+      sel.innerHTML = '<option value="">Загрузка...</option>';
+      fetch(`/api/custom_waves?token=${window._pvzToken}`)
+        .then(r => r.json())
+        .then(res => {
+          const list = res.waves || [];
+          const failed = res.failed || 0;
+          _cwaveCache = list;
+          sel.innerHTML = '';
+          if (!list.length) {
+            sel.innerHTML = '<option value="">Нет волн</option>';
+            info.textContent = failed ? `${failed} файл(ов) не загружено` : '';
+            return;
+          }
+          list.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w._filename;
+            opt.textContent = w.name || w._filename;
+            sel.appendChild(opt);
+          });
+          updateCwaveInfo();
+          if (failed) info.textContent += ` · ${failed} файл(ов) не загружено`;
+        })
+        .catch(() => { sel.innerHTML = '<option value="">Ошибка</option>'; });
+    }
+
+    function updateCwaveInfo() {
+      const sel = document.getElementById('dev-cwave-select');
+      const info = document.getElementById('dev-cwave-info');
+      const cfg = _cwaveCache.find(w => w._filename === sel.value);
+      if (!cfg) { info.textContent = ''; return; }
+      const parts = [];
+      if (cfg.author) parts.push(cfg.author);
+      parts.push(cfg.waves.length + ' волн');
+      if (cfg.startSun != null) parts.push(cfg.startSun + '☀');
+      if (cfg.nightMode) parts.push('ночь');
+      if (cfg.plants) parts.push(cfg.plants.length + ' растений');
+      info.textContent = parts.join(' · ');
+    }
+
+    document.getElementById('dev-cwave-select').addEventListener('change', updateCwaveInfo);
+    document.getElementById('dev-cwave-refresh').addEventListener('click', loadCwaveList);
+
+    document.getElementById('dev-cwave-start').addEventListener('click', () => {
+      const sel = document.getElementById('dev-cwave-select');
+      const cfg = _cwaveCache.find(w => w._filename === sel.value);
+      if (!cfg) return;
+      Game.startCustomWave(cfg);
+    });
+
+    document.getElementById('dev-cwave-stop').addEventListener('click', () => {
+      if (Engine.State._customWave) Game.stopCustomWave();
+    });
+
+    loadCwaveList();
+
     const consoleInput = document.getElementById('dev-console-input');
     let cmdHistory = [];
     let historyIdx = -1;
@@ -384,6 +439,9 @@ function executeDevCommand(input) {
       consolePrint('  wave <n>            — запустить волну', 'hint');
       consolePrint('  mower <row>         — активировать косилку (1-5)', 'hint');
       consolePrint('  mowers              — респавн косилок', 'hint');
+      consolePrint('  cwave list          — список кастомных волн', 'hint');
+      consolePrint('  cwave load <имя>    — запустить кастомную волну', 'hint');
+      consolePrint('  cwave stop          — остановить кастомную волну', 'hint');
       consolePrint('  clear               — очистить консоль', 'hint');
       break;
 
@@ -472,6 +530,51 @@ function executeDevCommand(input) {
     case 'clear': {
       const output = document.getElementById('dev-console-output');
       if (output) output.innerHTML = '';
+      break;
+    }
+
+    case 'cwave': {
+      const sub = (parts[1] || '').toLowerCase();
+      if (sub === 'list') {
+        consolePrint('Загрузка списка...', 'hint');
+        fetch(`/api/custom_waves?token=${window._pvzToken}`)
+          .then(r => r.json())
+          .then(res => {
+            const list = res.waves || [];
+            const failed = res.failed || 0;
+            if (!list.length && !failed) { consolePrint('Нет кастомных волн в custom_waves/', 'error'); return; }
+            if (list.length) {
+              consolePrint(`Найдено волн: ${list.length}`, 'success');
+              list.forEach(w => {
+                const author = w.author ? ` (${w.author})` : '';
+                const desc = w.description ? ` — ${w.description}` : '';
+                consolePrint(`  ${w._filename}: ${w.name || '?'}${author}${desc}`, 'hint');
+              });
+            }
+            if (failed) consolePrint(`${failed} файл(ов) не загружено (невалидный JSON)`, 'error');
+          })
+          .catch(() => consolePrint('Ошибка загрузки', 'error'));
+      } else if (sub === 'load') {
+        const name = parts[2];
+        if (!name) { consolePrint('Использование: cwave load <имя файла>', 'error'); break; }
+        consolePrint('Загрузка ' + name + '...', 'hint');
+        fetch(`/api/custom_waves?token=${window._pvzToken}`)
+          .then(r => r.json())
+          .then(res => {
+            const list = res.waves || [];
+            const cfg = list.find(w => w._filename === name);
+            if (!cfg) { consolePrint('Волна "' + name + '" не найдена. Используйте cwave list', 'error'); return; }
+            Game.startCustomWave(cfg);
+            consolePrint(`Запущена: ${cfg.name || name} (${cfg.waves.length} волн)`, 'success');
+          })
+          .catch(() => consolePrint('Ошибка загрузки', 'error'));
+      } else if (sub === 'stop') {
+        if (!S._customWave) { consolePrint('Кастомная волна не запущена', 'error'); break; }
+        Game.stopCustomWave();
+        consolePrint('Кастомная волна остановлена', 'success');
+      } else {
+        consolePrint('Использование: cwave list | load <имя> | stop', 'error');
+      }
       break;
     }
 

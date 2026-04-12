@@ -453,6 +453,7 @@ function buildPlantBar() {
   bindPlantDragHandlers();
 
   PLANT_DISPLAY.forEach(plant => {
+    if (Engine.State._customPlants && !Engine.State._customPlants.includes(plant.key)) return;
     if (plant.nightOnly && !Engine.State.nightMode) return;
     if (plant.key === 'sunflower' && Engine.State.nightMode) return;
 
@@ -585,7 +586,6 @@ function resetGameState() {
   S.lawnmowers = Array(Engine.GRID_ROWS).fill(null);
   S.gameOver = false;
   S.started  = false;
-  S._devPaused = false;
   S.droppedFiles = [];
   S.nextFileId = 0;
   S._sysFolder = null;

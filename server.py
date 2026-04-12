@@ -65,6 +65,65 @@ def get_manifest():
             return json.load(f)
     return {"version": "0.1.0", "name": "Plants VS Zombies Desktop"}
 
+import re
+
+def _strip_json_comments(text):
+    result = []
+    i = 0
+    in_string = False
+    while i < len(text):
+        c = text[i]
+        if in_string:
+            result.append(c)
+            if c == '\\' and i + 1 < len(text):
+                i += 1
+                result.append(text[i])
+            elif c == '"':
+                in_string = False
+        elif c == '"':
+            in_string = True
+            result.append(c)
+        elif c == '/' and i + 1 < len(text):
+            if text[i + 1] == '/':
+                while i < len(text) and text[i] != '\n':
+                    i += 1
+                continue
+            elif text[i + 1] == '*':
+                i += 2
+                while i + 1 < len(text) and not (text[i] == '*' and text[i + 1] == '/'):
+                    i += 1
+                i += 2
+                continue
+            else:
+                result.append(c)
+        else:
+            result.append(c)
+        i += 1
+    return ''.join(result)
+
+def get_custom_waves():
+    waves_dir = BASE_DIR / "custom_waves"
+    result = []
+    failed = 0
+    if not waves_dir.exists():
+        return {"waves": result, "failed": 0}
+    for f in sorted(waves_dir.iterdir()):
+        if f.suffix != ".json":
+            continue
+        try:
+            with open(f, encoding="utf-8") as fp:
+                raw = fp.read()
+            cleaned = _strip_json_comments(raw)
+            data = json.loads(cleaned)
+            if "waves" in data:
+                data["_filename"] = f.stem
+                result.append(data)
+            else:
+                failed += 1
+        except Exception:
+            failed += 1
+    return {"waves": result, "failed": failed}
+
 def get_wallpaper_path() -> str:
     if os.name != "nt":
         return ""
@@ -269,6 +328,8 @@ class GameHandler(SimpleHTTPRequestHandler):
             self._json(get_manifest())
         elif parsed.path == "/api/screen":
             self._json(get_screen_size())
+        elif parsed.path == "/api/custom_waves":
+            self._json(get_custom_waves())
         else:
             super().do_GET()
 

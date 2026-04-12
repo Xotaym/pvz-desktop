@@ -1,0 +1,39 @@
+{
+  "name": "Бронебойная армия",
+  "author": "Xotaym",
+  // Это пример комментария. Их вы можете оставлять в любом месте. JSON от этого не перестанет быть валидным.
+  "description": "Пример кастомных волн в PvZ Desktop.",
+  "startSun": 200,
+  "nightMode": false,
+  "plants": ["sunflower", "peashooter", "folder_magnet", "siamese_peashooter", "kaspersky_bean"],
+  "lawnmowers": true,
+  "waves": [
+    {
+      "zombies": [
+        { "type": "hdd_zombie", "row": 2, "delay": 0 },
+        { "type": "hdd_zombie", "row": 4, "delay": 3000 },
+        { "type": "zombie", "row": 1, "delay": 5000 }
+      ]
+    },
+    {
+      "zombies": [
+        { "type": "hdd_zombie", "row": 1, "delay": 0 },
+        { "type": "ssd_zombie", "row": 3, "delay": 2000 },
+        { "type": "hdd_zombie", "row": 5, "delay": 4000 },
+        { "type": "ssd_zombie", "row": 2, "delay": 6000 },
+        { "type": "trojan_catapult", "row": 4, "delay": 8000 }
+      ]
+    },
+    {
+      "zombies": [
+        { "type": "hdd_zombie", "row": 1, "delay": 0 },
+        { "type": "hdd_zombie", "row": 2, "delay": 1000 },
+        { "type": "hdd_zombie", "row": 3, "delay": 2000 },
+        { "type": "hdd_zombie", "row": 4, "delay": 3000 },
+        { "type": "hdd_zombie", "row": 5, "delay": 4000 },
+        { "type": "system_zombie", "row": 3, "delay": 7000 },
+        { "type": "winrar_zombie", "row": 1, "delay": 9000 }
+      ]
+    }
+  ]
+}

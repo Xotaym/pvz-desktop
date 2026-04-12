@@ -347,6 +347,18 @@ if (location.protocol === 'file:') {
         <button id="dev-spawn-sun" class="dev-btn">☀ Спавн солнца</button>
         <button id="dev-kill-all" class="dev-btn" style="background:#e74c3c">💀 Убить всех</button>
       </div>
+      <div class="dev-section">
+        <label>📦 Кастомные волны:</label>
+        <div style="display:flex;gap:4px;align-items:center;margin-top:4px">
+          <select id="dev-cwave-select" class="dev-input" style="flex:1;min-width:0"></select>
+          <button id="dev-cwave-refresh" class="dev-btn" title="Обновить">🔄</button>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:4px">
+          <button id="dev-cwave-start" class="dev-btn" style="flex:1;background:#27ae60">▶ Запустить</button>
+          <button id="dev-cwave-stop" class="dev-btn" style="flex:1;background:#e74c3c">⏹ Стоп</button>
+        </div>
+        <div id="dev-cwave-info" style="font-size:11px;color:#aaa;margin-top:4px"></div>
+      </div>
     </div>
     <div id="dev-tab-console" class="dev-tab-content">
       <div id="dev-console-output" class="dev-console-output">
