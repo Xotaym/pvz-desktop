@@ -174,7 +174,7 @@ python server.py
 - **GUI**: секция "Кастомные волны" - выберите волну и нажмите "Запустить"
 - **Консоль**: `cwave list` - список, `cwave load <имя>` - запуск, `cwave stop` - стоп
 
-Полная документация формата: [`CUSTOM_WAVES.md`](CUSTOM_WAVES.md)
+Полная документация формата: [`CW_Tutorial.md`](custom_waves/CW_Tutorial.md)
 
 <br>
 
