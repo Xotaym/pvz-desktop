@@ -7,10 +7,15 @@
   </a>
   <img src="https://img.shields.io/github/stars/xotaym/pvz-desktop?style=social" alt="Stars">
   <img src="https://img.shields.io/github/forks/xotaym/pvz-desktop?style=social" alt="Forks">
+
+  <span>⭐Don't forget to give it a star!⭐</span>
+  
+  <span>⭐Не забудьте поставить звездочку!⭐</span>
   <br>
   Russia <img src=https://flagicons.lipis.dev/flags/4x3/ru.svg width=40>
   <br>
 </h1>
+
 
 <p align="center">
   <b>Твой рабочий стол — поле битвы.</b>
