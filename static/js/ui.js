@@ -5,78 +5,34 @@ const SFX = {
   _sfxMuted: false,
   _musicMuted: false,
   _musicIds: ['snd-menu'],
-  _nativeAvailable: false,
-  _nativeChecked: false,
-  _htmlUnlocked: false,
 
   _isMusic(id) { return this._musicIds.includes(id); },
 
-  _checkNative() {
-    if (this._nativeChecked) return;
-    this._nativeChecked = true;
-    this._nativeAvailable = !!(window.pywebview && window.pywebview.api && window.pywebview.api.play);
-    if (this._nativeAvailable) console.log('[SFX] Native audio via pywebview');
+  play(id) {
+    if (this._isMusic(id) && this._musicMuted) return;
+    if (!this._isMusic(id) && this._sfxMuted) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.pause();
+    el.currentTime = 0;
+    el.volume = this._volume;
+    el.play().catch(() => {});
   },
 
-  _stopHtml(id) {
+  stop(id) {
     const el = document.getElementById(id);
     if (el) { el.pause(); el.currentTime = 0; }
   },
 
-  _stopAll(id) {
-    if (this._nativeAvailable) {
-      window.pywebview.api.stop(id).catch(() => {});
-    }
-    this._stopHtml(id);
-  },
-
-  play(id) {
-    this._checkNative();
-    if (this._isMusic(id) && this._musicMuted) return;
-    if (!this._isMusic(id) && this._sfxMuted) return;
-
-    this._stopAll(id);
-
-    if (this._nativeAvailable) {
-      window.pywebview.api.play(id).catch(() => {});
-    } else {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.volume = this._volume;
-      el.currentTime = 0;
-      el.play().catch(() => {});
-    }
-  },
-
-  stop(id) {
-    this._checkNative();
-    this._stopAll(id);
-  },
-
   stopAll() {
-    this._checkNative();
     document.querySelectorAll('audio').forEach(el => {
       el.pause();
       el.currentTime = 0;
     });
-    if (this._nativeAvailable) {
-      window.pywebview.api.stop().catch(() => {});
-    }
-  },
-
-  toggle(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (el.paused) { el.volume = this._volume; el.play().catch(()=>{}); }
-    else el.pause();
   },
 
   applyVolume() {
     document.querySelectorAll('audio').forEach(el => { el.volume = this._volume; });
-    this._checkNative();
-    if (this._nativeAvailable) {
-      window.pywebview.api.set_volume(this._volume).catch(() => {});
-    }
   },
 
   loadSettings() {
@@ -96,10 +52,6 @@ const SFX = {
       sfxMuted: this._sfxMuted,
       musicMuted: this._musicMuted,
     }));
-    this._checkNative();
-    if (this._nativeAvailable) {
-      window.pywebview.api.set_muted(this._sfxMuted, this._musicMuted).catch(() => {});
-    }
   }
 };
 window.SFX = SFX;
@@ -164,6 +116,8 @@ const PLANT_DISPLAY = [
   { key: 'kaspersky_bean',    name: 'касп-боб.png',              cost: 50,  file: 'касперский-боб.png', isItem: true },
   { key: 'daisy',             name: 'ромашка.jpg',               cost: 75,  file: 'ромашка.jpg' },
   { key: 'cherry',            name: 'вишня.webp',                cost: 80,  file: 'вишня.webp' },
+  { key: 'avast_nut',         name: 'авасторех.jpg',             cost: 100, file: 'авасторех.jpg' },
+  { key: 'basket_chomper',   name: 'корзинокусалка.png',        cost: 75,  file: 'корзинокусалка.png' },
 ];
 
 function bindPlantDragHandlers() {
@@ -460,7 +414,7 @@ function buildPlantBar() {
     const card = document.createElement('div');
     card.className = 'plant-card';
     card.dataset.key = plant.key;
-    card.title = `${plant.file} (${plant.cost} ☀)`;
+    card.title = `${Lang.t('plant.name.' + plant.key)} (${plant.cost} ☀)`;
 
     const img = document.createElement('img');
     img.src = `static/img/plants/${plant.file}`;
@@ -540,6 +494,7 @@ function initPauseMenu() {
 
 function pauseGame() {
   Engine.State.paused = true;
+  Engine.dismissChomperMenu();
   GameLog.log('GAME', 'Game paused');
   document.getElementById('pause-menu').classList.remove('hidden');
   SFX.stop('snd-menu');
@@ -683,9 +638,9 @@ function initSettings() {
   slider.value = Math.round(SFX._volume * 100);
   valLabel.textContent = slider.value + '%';
   musicCb.checked = !SFX._musicMuted;
-  musicCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = SFX._musicMuted ? 'ВЫКЛ' : 'ВКЛ';
+  musicCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = SFX._musicMuted ? Lang.t('settings.toggle.off') : Lang.t('settings.toggle.on');
   sfxCb.checked = !SFX._sfxMuted;
-  sfxCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = SFX._sfxMuted ? 'ВЫКЛ' : 'ВКЛ';
+  sfxCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = SFX._sfxMuted ? Lang.t('settings.toggle.off') : Lang.t('settings.toggle.on');
 
   slider.addEventListener('input', () => {
     const v = parseInt(slider.value);
@@ -697,7 +652,7 @@ function initSettings() {
 
   musicCb.addEventListener('change', () => {
     SFX._musicMuted = !musicCb.checked;
-    musicCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = musicCb.checked ? 'ВКЛ' : 'ВЫКЛ';
+    musicCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = musicCb.checked ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
     if (SFX._musicMuted) {
       SFX.stop('snd-menu');
     } else if (document.getElementById('screen-menu')?.classList.contains('active')) {
@@ -708,7 +663,7 @@ function initSettings() {
 
   sfxCb.addEventListener('change', () => {
     SFX._sfxMuted = !sfxCb.checked;
-    sfxCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = sfxCb.checked ? 'ВКЛ' : 'ВЫКЛ';
+    sfxCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = sfxCb.checked ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
     SFX.saveSettings();
   });
 
@@ -730,7 +685,7 @@ function initSettings() {
   const devCb = document.getElementById('settings-devmode-cb');
   const savedDev = localStorage.getItem('pvz_devmode') === 'true';
   devCb.checked = savedDev;
-  devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = savedDev ? 'ВКЛ' : 'ВЫКЛ';
+  devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = savedDev ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
 
   const clearLogsBtn = document.getElementById('settings-clear-logs');
   function updateClearLogsVisibility() {
@@ -738,12 +693,57 @@ function initSettings() {
   }
   updateClearLogsVisibility();
 
-  devCb.addEventListener('change', () => {
-    const on = devCb.checked;
-    devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = on ? 'ВКЛ' : 'ВЫКЛ';
+  const devModal = document.getElementById('confirm-devmode-modal');
+  const devYesBtn = document.getElementById('confirm-devmode-yes');
+  const devNoBtn = document.getElementById('confirm-devmode-no');
+  let devCooldownTimer = null;
+
+  function applyDevMode(on) {
+    devCb.checked = on;
+    devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = on ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
     localStorage.setItem('pvz_devmode', String(on));
     if (!on) document.getElementById('dev-panel')?.classList.add('hidden');
     updateClearLogsVisibility();
+  }
+
+  devCb.addEventListener('change', () => {
+    if (devCb.checked) {
+      devCb.checked = false;
+      devModal.classList.remove('hidden');
+      devYesBtn.disabled = true;
+      let sec = 5;
+      devYesBtn.textContent = Lang.t('confirm.devmode_yes', sec);
+      if (devCooldownTimer) clearInterval(devCooldownTimer);
+      devCooldownTimer = setInterval(() => {
+        sec--;
+        if (sec <= 0) {
+          clearInterval(devCooldownTimer);
+          devCooldownTimer = null;
+          devYesBtn.disabled = false;
+          devYesBtn.textContent = Lang.t('confirm.devmode_yes_ready');
+        } else {
+          devYesBtn.textContent = Lang.t('confirm.devmode_yes', sec);
+        }
+      }, 1000);
+    } else {
+      applyDevMode(false);
+    }
+  });
+
+  devYesBtn.addEventListener('click', () => {
+    if (devCooldownTimer) { clearInterval(devCooldownTimer); devCooldownTimer = null; }
+    devModal.classList.add('hidden');
+    applyDevMode(true);
+  });
+  devNoBtn.addEventListener('click', () => {
+    if (devCooldownTimer) { clearInterval(devCooldownTimer); devCooldownTimer = null; }
+    devModal.classList.add('hidden');
+  });
+  devModal.addEventListener('click', (e) => {
+    if (e.target === devModal) {
+      if (devCooldownTimer) { clearInterval(devCooldownTimer); devCooldownTimer = null; }
+      devModal.classList.add('hidden');
+    }
   });
 
   const confirmLogsModal = document.getElementById('confirm-logs-modal');
@@ -762,6 +762,15 @@ function initSettings() {
   confirmLogsModal.addEventListener('click', (e) => {
     if (e.target === confirmLogsModal) confirmLogsModal.classList.add('hidden');
   });
+
+  const langCb = document.getElementById('settings-lang-cb');
+  if (langCb) {
+    langCb.checked = (Lang.current() === 'en');
+    document.getElementById('settings-lang-label').textContent = Lang.t('settings.lang.name');
+    langCb.addEventListener('change', () => {
+      Lang.set(langCb.checked ? 'en' : 'ru');
+    });
+  }
 
   closeBtn.addEventListener('click', closeSettings);
   modal.addEventListener('click', (e) => {

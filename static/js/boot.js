@@ -1,23 +1,25 @@
 "use strict";
 
-const FAKE_ICONS = [
-  { name: 'Мой компьютер',      icon: '💻' },
-  { name: 'Корзина',            icon: '🗑️' },
-  { name: 'Документы',          icon: '📁' },
-  { name: 'Загрузки',           icon: '⬇️' },
-  { name: 'Проводник',          icon: '📂' },
-  { name: 'pvz_desktop.exe',    icon: '🌻' },
-  { name: 'браузер.lnk',        icon: '🌐' },
-  { name: 'блокнот.txt',        icon: '📝' },
-  { name: 'calc.exe',           icon: '🖩' },
-  { name: 'музыка',             icon: '🎵' },
-  { name: 'фото.jpg',           icon: '🖼️' },
-  { name: 'видео.mp4',          icon: '🎬' },
-  { name: 'README.md',          icon: '📄' },
-  { name: 'игра-копия.exe',     icon: '🎮' },
-  { name: 'пароли.txt',         icon: '🔐' },
-  { name: 'backup.zip',         icon: '📦' },
-];
+function getFakeIcons() {
+  return [
+    { name: Lang.t('boot.my_computer'),  icon: '💻' },
+    { name: Lang.t('boot.recycle_bin'),   icon: '🗑️' },
+    { name: Lang.t('boot.documents'),     icon: '📁' },
+    { name: Lang.t('boot.downloads'),     icon: '⬇️' },
+    { name: Lang.t('boot.explorer'),      icon: '📂' },
+    { name: 'pvz_desktop.exe',            icon: '🌻' },
+    { name: Lang.t('boot.browser'),       icon: '🌐' },
+    { name: Lang.t('boot.notepad'),       icon: '📝' },
+    { name: 'calc.exe',                   icon: '🖩' },
+    { name: Lang.t('boot.music'),         icon: '🎵' },
+    { name: Lang.t('boot.photo'),         icon: '🖼️' },
+    { name: Lang.t('boot.video'),         icon: '🎬' },
+    { name: 'README.md',                  icon: '📄' },
+    { name: Lang.t('boot.game_copy'),     icon: '🎮' },
+    { name: Lang.t('boot.passwords'),     icon: '🔐' },
+    { name: 'backup.zip',                 icon: '📦' },
+  ];
+}
 
 const BOOT_ICON_W = 76;
 const BOOT_ICON_H = 92;
@@ -74,7 +76,7 @@ async function runBootSequence(onComplete) {
   screen.classList.add('visible');
 
   await delay(300);
-  const sourceIcons = (desktopData && desktopData.icons) || FAKE_ICONS;
+  const sourceIcons = (desktopData && desktopData.icons) || getFakeIcons();
   const visibleIcons = sourceIcons.slice(0, 48);
   const positions = generateIconPositions(visibleIcons.length);
   const iconEls = [];

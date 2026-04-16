@@ -63,7 +63,7 @@ def get_manifest():
     if MANIFEST_FILE.exists():
         with open(MANIFEST_FILE, encoding="utf-8") as f:
             return json.load(f)
-    return {"version": "0.1.0", "name": "Plants VS Zombies Desktop"}
+    return {"version": "0.2.6", "name": "Plants VS Zombies Desktop"}
 
 import re
 
@@ -390,106 +390,6 @@ class GameHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
-class AudioBridge:
-
-    def __init__(self):
-        self._sounds_dir = STATIC_DIR / "sounds"
-        self._cache = {}
-        self._volume = 1.0
-        self._muted_sfx = False
-        self._muted_music = False
-        self._music_ids = {"snd-menu"}
-        self._lock = threading.Lock()
-        self._scan_sounds()
-
-    def _mci(self, command):
-        buf = ctypes.create_unicode_buffer(256)
-        err = ctypes.windll.winmm.mciSendStringW(command, buf, 255, None)
-        return buf.value if err == 0 else None
-
-    def _scan_sounds(self):
-        if not self._sounds_dir.exists():
-            return
-        id_map = {
-            "snd-delete": "удаление",
-            "snd-pea": "горошина",
-            "snd-explosion": "взрыв",
-            "snd-lawnmower": "косилка",
-            "snd-sun": "солнце",
-            "snd-death": "ваша-смерть",
-            "snd-menu": "меню",
-            "snd-defeat": "поражение",
-        }
-        for sid, name in id_map.items():
-            for ext in (".mp3", ".wav", ".ogg"):
-                p = self._sounds_dir / f"{name}{ext}"
-                if p.exists():
-                    self._cache[sid] = str(p)
-                    break
-
-    def _get_alias(self, sound_id):
-        clean = sound_id.replace("-", "")
-        return f"pvz_{clean}"
-
-    def play(self, sound_id):
-        if os.name != "nt":
-            return False
-        if sound_id in self._music_ids and self._muted_music:
-            return False
-        if sound_id not in self._music_ids and self._muted_sfx:
-            return False
-        path = self._cache.get(sound_id)
-        if not path:
-            return False
-        try:
-            with self._lock:
-                alias = self._get_alias(sound_id)
-                self._mci(f'close {alias}')
-                self._mci(f'open "{path}" alias {alias}')
-                vol = int(self._volume * 1000)
-                self._mci(f'setaudio {alias} volume to {vol}')
-                repeat = "repeat" if sound_id in self._music_ids else ""
-                self._mci(f'play {alias} from 0 {repeat}')
-            return True
-        except Exception as e:
-            print(f"[audio] error: {e}")
-            return False
-
-    def stop(self, sound_id=None):
-        if os.name != "nt":
-            return False
-        try:
-            with self._lock:
-                if sound_id:
-                    alias = self._get_alias(sound_id)
-                    self._mci(f'stop {alias}')
-                    self._mci(f'close {alias}')
-                else:
-                    for sid in list(self._cache.keys()):
-                        alias = self._get_alias(sid)
-                        self._mci(f'stop {alias}')
-                        self._mci(f'close {alias}')
-            return True
-        except Exception:
-            return False
-
-    def set_volume(self, volume):
-        self._volume = max(0.0, min(1.0, float(volume)))
-        vol = int(self._volume * 1000)
-        with self._lock:
-            for sid in self._cache:
-                alias = self._get_alias(sid)
-                self._mci(f'setaudio {alias} volume to {vol}')
-        return True
-
-    def set_muted(self, sfx_muted, music_muted):
-        self._muted_sfx = bool(sfx_muted)
-        self._muted_music = bool(music_muted)
-        if self._muted_music:
-            for sid in list(self._music_ids):
-                self.stop(sid)
-        return True
-
 def start_server():
     server = HTTPServer(("127.0.0.1", PORT), GameHandler)
     print(f"[PvZ Desktop] Server running: http://127.0.0.1:{PORT}")
@@ -525,8 +425,6 @@ def main():
         server_thread = threading.Thread(target=start_server, daemon=True)
         server_thread.start()
 
-        audio_bridge = AudioBridge()
-
         if getattr(sys, 'frozen', False):
             _app_dir = Path(sys.executable).parent
         else:
@@ -541,11 +439,9 @@ def main():
             resizable=True,
             frameless=False,
             easy_drag=False,
-            js_api=audio_bridge,
         )
         webview.start(private_mode=False, storage_path=storage_dir)
 
-        audio_bridge.stop()
         sys.exit(0)
     else:
         print("[PvZ Desktop] No pywebview, server-only mode.")

@@ -36,8 +36,8 @@ if (location.protocol === 'file:') {
       <span class="wt-zombies">Zombies</span>
       <span class="wt-desktop">Desktop</span>
     </div>
-    <p class="welcome-subtitle">Твой рабочий стол — поле битвы.</p>
-    <button class="welcome-btn" id="btn-welcome-start">Начать</button>
+    <p class="welcome-subtitle" data-i18n="welcome.subtitle">Твой рабочий стол — поле битвы.</p>
+    <button class="welcome-btn" id="btn-welcome-start" data-i18n="welcome.start">Начать</button>
   </div>
 </div>
 
@@ -50,7 +50,7 @@ if (location.protocol === 'file:') {
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
         </div>
-        <span class="defender-header-title">Безопасность Windows</span>
+        <span class="defender-header-title" data-i18n="defender.title">Безопасность Windows</span>
       </div>
       <div class="defender-header-controls">
         <span class="defender-ctrl">—</span>
@@ -65,20 +65,20 @@ if (location.protocol === 'file:') {
         </svg>
       </div>
       <div class="defender-alert-text">
-        <div class="defender-alert-title">Обнаружены угрозы</div>
-        <div class="defender-alert-desc">Защита от вирусов и угроз обнаружила вредоносные файлы на вашем устройстве.</div>
+        <div class="defender-alert-title" data-i18n="defender.alert_title">Обнаружены угрозы</div>
+        <div class="defender-alert-desc" data-i18n="defender.alert_desc">Защита от вирусов и угроз обнаружила вредоносные файлы на вашем устройстве.</div>
       </div>
       <div class="defender-threat-card">
-        <div class="defender-threat-severity">Критический</div>
+        <div class="defender-threat-severity" data-i18n="defender.severity">Критический</div>
         <div class="defender-threat-name">Trojan:Win32/PvZDesktop.A!ml</div>
         <div class="defender-threat-detail">
-          <div class="defender-detail-row"><span>Файл:</span> <span id="threat-filename">pvz_desktop.exe</span></div>
-          <div class="defender-detail-row"><span>Статус:</span> <span class="defender-status-active">Активна</span></div>
-          <div class="defender-detail-row"><span>Действие:</span> <span>Удаление файлов...</span></div>
+          <div class="defender-detail-row"><span data-i18n="defender.file_label">Файл:</span> <span id="threat-filename">pvz_desktop.exe</span></div>
+          <div class="defender-detail-row"><span data-i18n="defender.status_label">Статус:</span> <span class="defender-status-active" data-i18n="defender.status">Активна</span></div>
+          <div class="defender-detail-row"><span data-i18n="defender.action_label">Действие:</span> <span data-i18n="defender.action">Удаление файлов...</span></div>
         </div>
       </div>
       <div class="defender-progress-section">
-        <div class="defender-progress-label">Удаление вредоносных файлов...</div>
+        <div class="defender-progress-label" data-i18n="defender.progress">Удаление вредоносных файлов...</div>
         <div class="defender-bar"><div class="defender-bar-fill"></div></div>
       </div>
     </div>
@@ -98,159 +98,187 @@ if (location.protocol === 'file:') {
     </div>
   </div>
   <div class="menu-buttons">
-    <button class="menu-btn" id="btn-play">▶ Играть</button>
-    <button class="menu-btn" id="btn-docs">📖 Документация</button>
-    <button class="menu-btn" id="btn-settings">⚙ Настройки</button>
+    <button class="menu-btn" id="btn-play" data-i18n="menu.play">▶ Играть</button>
+    <button class="menu-btn" id="btn-docs" data-i18n="menu.docs">📖 Документация</button>
+    <button class="menu-btn" id="btn-settings" data-i18n="menu.settings">⚙ Настройки</button>
   </div>
-  <div class="menu-version" id="menu-version">v0.1.0</div>
+  <div class="menu-version" id="menu-version">v0.2.6</div>
 </div>
 
 <div id="screen-docs" class="screen">
   <div class="docs-overlay"></div>
   <div class="docs-window">
     <div class="docs-titlebar">
-      <span>📄 Документация — Plants VS Zombies Desktop</span>
+      <span data-i18n="docs.title">📄 Документация — Plants VS Zombies Desktop</span>
       <button class="docs-close" id="btn-docs-close">✕</button>
     </div>
     <div class="docs-body">
-      <h2>🌱 Растения</h2>
+      <h2 data-i18n="docs.plants_heading">🌱 Растения</h2>
       <div class="docs-grid">
         <div class="docs-card">
           <img src="static/img/plants/подсолнух.png" alt="Подсолнух" onerror="this.src=''">
-          <h3>Подсолнух</h3>
-          <span class="docs-class" style="color:#ffd700">Солнечное</span>
-          <p>Стоимость: <b>50 ☀</b></p>
-          <p>Производит солнца каждые 6–9 секунд. Основа экономики. Не работает ночью.</p>
+          <h3 data-i18n="docs.plant.sunflower.name">Подсолнух</h3>
+          <span class="docs-class" style="color:#ffd700" data-i18n="docs.plant.sunflower.class">Солнечное</span>
+          <p data-i18n-html="docs.plant.sunflower.stats">Стоимость: <b>50 ☀</b></p>
+          <p data-i18n="docs.plant.sunflower.desc">Производит солнца каждые 6–9 секунд. Основа экономики. Не работает ночью.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/горохострел.png" alt="Горохострел" onerror="this.src=''">
-          <h3>Горохострел</h3>
-          <span class="docs-class" style="color:#7fff00">Атакующее</span>
-          <p>Стоимость: <b>75 ☀</b></p>
-          <p>Стреляет горошинами по зомби. 1 горошина = 1 урон.</p>
+          <h3 data-i18n="docs.plant.peashooter.name">Горохострел</h3>
+          <span class="docs-class" style="color:#7fff00" data-i18n="docs.plant.peashooter.class">Атакующее</span>
+          <p data-i18n-html="docs.plant.peashooter.stats">Стоимость: <b>75 ☀</b></p>
+          <p data-i18n="docs.plant.peashooter.desc">Стреляет горошинами по зомби. 1 горошина = 1 урон.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/папка-магнит.png" alt="Папка-магнит" onerror="this.src=''">
-          <h3>Папка-магнит</h3>
-          <span class="docs-class" style="color:#4488ff">Системное</span>
-          <p>Стоимость: <b>75 ☀</b></p>
-          <p>Притягивает системные файлы с систем-зомби в радиусе 3 клеток. Спасает от BSOD!</p>
+          <h3 data-i18n="docs.plant.folder_magnet.name">Папка-магнит</h3>
+          <span class="docs-class" style="color:#4488ff" data-i18n="docs.plant.folder_magnet.class">Системное</span>
+          <p data-i18n-html="docs.plant.folder_magnet.stats">Стоимость: <b>75 ☀</b></p>
+          <p data-i18n="docs.plant.folder_magnet.desc">Притягивает системные файлы с систем-зомби в радиусе 3 клеток. Спасает от BSOD!</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/сиамский-горохострел.png" alt="Сиамский горохострел" onerror="this.src=''">
-          <h3>Сиамский горохострел</h3>
-          <span class="docs-class" style="color:#7fff00">Атакующее</span>
-          <p>Стоимость: <b>125 ☀</b></p>
-          <p>Стреляет горошинами в обе стороны — и вправо, и влево!</p>
+          <h3 data-i18n="docs.plant.siamese.name">Сиамский горохострел</h3>
+          <span class="docs-class" style="color:#7fff00" data-i18n="docs.plant.siamese.class">Атакующее</span>
+          <p data-i18n-html="docs.plant.siamese.stats">Стоимость: <b>125 ☀</b></p>
+          <p data-i18n="docs.plant.siamese.desc">Стреляет горошинами в обе стороны — и вправо, и влево!</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/xsas-гриб.png" alt="XSAS гриб" onerror="this.src=''">
-          <h3>XSAS-гриб</h3>
-          <span class="docs-class" style="color:#ff00ff">Взрывное</span>
-          <p>Стоимость: <b>150 ☀</b></p>
-          <p>Взрывается через 3 сек. Уничтожает всё в радиусе 5x5. Оставляет пиксельные артефакты.</p>
+          <h3 data-i18n="docs.plant.xsas.name">XSAS-гриб</h3>
+          <span class="docs-class" style="color:#ff00ff" data-i18n="docs.plant.xsas.class">Взрывное</span>
+          <p data-i18n-html="docs.plant.xsas.stats">Стоимость: <b>150 ☀</b></p>
+          <p data-i18n="docs.plant.xsas.desc">Взрывается через 3 сек. Уничтожает всё в радиусе 5x5. Оставляет пиксельные артефакты.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/солнце-гриб.png" alt="Солнце-гриб" onerror="this.src=''">
-          <h3>Солнце-гриб</h3>
-          <span class="docs-class" style="color:#9966ff">Ночное</span>
-          <p>Стоимость: <b>25 ☀</b></p>
-          <p>Дешёвый заменитель подсолнуха. Работает только ночью. Производит 15 ☀.</p>
+          <h3 data-i18n="docs.plant.sun_mushroom.name">Солнце-гриб</h3>
+          <span class="docs-class" style="color:#9966ff" data-i18n="docs.plant.sun_mushroom.class">Ночное</span>
+          <p data-i18n-html="docs.plant.sun_mushroom.stats">Стоимость: <b>25 ☀</b></p>
+          <p data-i18n="docs.plant.sun_mushroom.desc">Дешёвый заменитель подсолнуха. Работает только ночью. Производит 15 ☀.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/разархиватор.png" alt="Разархиватор" onerror="this.src=''">
-          <h3>Разархиватор</h3>
-          <span class="docs-class" style="color:#f39c12">Предмет</span>
-          <p>Стоимость: <b>50 ☀</b></p>
-          <p>Снимает архивацию с растений, заражённых WinRAR-зомби. Не сажается — применяется на растение.</p>
+          <h3 data-i18n="docs.plant.unarchiver.name">Разархиватор</h3>
+          <span class="docs-class" style="color:#f39c12" data-i18n="docs.plant.unarchiver.class">Предмет</span>
+          <p data-i18n-html="docs.plant.unarchiver.stats">Стоимость: <b>50 ☀</b></p>
+          <p data-i18n="docs.plant.unarchiver.desc">Снимает архивацию с растений, заражённых WinRAR-зомби. Не сажается — применяется на растение.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/касперский-боб.png" alt="Касперский-боб" onerror="this.src=''">
-          <h3>Касперский-боб</h3>
-          <span class="docs-class" style="color:#00cc44">Антивирус</span>
-          <p>Стоимость: <b>50 ☀</b></p>
-          <p>Лечит растения, заражённые троянами. Применяется на заражённое растение — оно полностью восстанавливается.</p>
+          <h3 data-i18n="docs.plant.kaspersky.name">Касперский-боб</h3>
+          <span class="docs-class" style="color:#00cc44" data-i18n="docs.plant.kaspersky.class">Антивирус</span>
+          <p data-i18n-html="docs.plant.kaspersky.stats">Стоимость: <b>50 ☀</b></p>
+          <p data-i18n="docs.plant.kaspersky.desc">Лечит растения, заражённые троянами. Применяется на заражённое растение — оно полностью восстанавливается.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/ромашка.jpg" alt="Ромашка" onerror="this.src=''">
-          <h3>Ромашка</h3>
-          <span class="docs-class" style="color:#ff69b4">Генератор</span>
-          <p>Стоимость: <b>75 ☀</b></p>
-          <p>Раз в 8–12 сек. выдаёт случайный предмет: растение, солнце, системный файл или даже зомби!</p>
+          <h3 data-i18n="docs.plant.daisy.name">Ромашка</h3>
+          <span class="docs-class" style="color:#ff69b4" data-i18n="docs.plant.daisy.class">Генератор</span>
+          <p data-i18n-html="docs.plant.daisy.stats">Стоимость: <b>75 ☀</b></p>
+          <p data-i18n="docs.plant.daisy.desc">Раз в 8–12 сек. выдаёт случайный предмет: растение, солнце, системный файл или даже зомби!</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/вишня.webp" alt="Вишня" onerror="this.src=''">
-          <h3>Вишня</h3>
-          <span class="docs-class" style="color:#ff3300">Взрывное</span>
-          <p>Стоимость: <b>80 ☀</b></p>
-          <p>Через 2 сек. взрывается в области 3x3, убивая до 5 самых сильных зомби. Системный файл при этом не уничтожается!</p>
+          <h3 data-i18n="docs.plant.cherry.name">Вишня</h3>
+          <span class="docs-class" style="color:#ff3300" data-i18n="docs.plant.cherry.class">Взрывное</span>
+          <p data-i18n-html="docs.plant.cherry.stats">Стоимость: <b>80 ☀</b></p>
+          <p data-i18n="docs.plant.cherry.desc">Через 2 сек. взрывается в области 3x3, убивая до 5 самых сильных зомби. Системный файл при этом не уничтожается!</p>
         </div>
       </div>
-      <h2>🧟 Зомби</h2>
+      <div class="docs-card">
+        <img src="static/img/plants/авасторех.jpg" alt="Авасторех" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.avast_nut.name">Авасторех</h3>
+          <span class="docs-class" style="color:#2ecc71" data-i18n="docs.plant.avast_nut.class">Защита</span>
+          <p data-i18n-html="docs.plant.avast_nut.stats">Стоимость: <b>100 ☀</b> | ХП: <b>10</b></p>
+          <p data-i18n="docs.plant.avast_nut.desc">Крепкий орешек. Нейтрализует трояны и защищает системные файлы в радиусе 3×3 клетки. Систем-зомби в радиусе роняют файл безопасно.</p>
+      </div>
+      <div class="docs-card">
+        <img src="static/img/plants/корзинокусалка.png" alt="Корзинокусалка" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.basket_chomper.name">Корзинокусалка</h3>
+          <span class="docs-class" style="color:#e67e22" data-i18n="docs.plant.basket_chomper.class">Поглощающее</span>
+          <p data-i18n-html="docs.plant.basket_chomper.stats">Стоимость: <b>75 ☀</b> | Переваривание: <b>18 сек</b></p>
+          <p data-i18n="docs.plant.basket_chomper.desc">Мгновенно съедает зомби, но потом переваривает 18 сек. ПКМ → «Очистить корзину» - ручная очистка. Не ест системный файл у систем-зомби - файл безопасно выпадает.</p>
+      </div>
+      <h2 data-i18n="docs.zombies_heading">🧟 Зомби</h2>
       <div class="docs-grid">
         <div class="docs-card">
           <img src="static/img/zombies/зомби.webp" alt="Зомби" onerror="this.src=''">
-          <h3>Зомби</h3>
-          <span class="docs-class" style="color:#8fbc8f">Базовый</span>
-          <p>ХП: <b>5–7</b></p>
-          <p>Обычный зомби. Каждый следующий получает имя как копия файла в Windows: «зомби — копия.webp», «зомби — копия(1).webp» и т.д.</p>
+          <h3 data-i18n="docs.zombie.zombie.name">Зомби</h3>
+          <span class="docs-class" style="color:#8fbc8f" data-i18n="docs.zombie.zombie.class">Базовый</span>
+          <p data-i18n-html="docs.zombie.zombie.stats">ХП: <b>5–7</b></p>
+          <p data-i18n="docs.zombie.zombie.desc">Обычный зомби. Каждый следующий получает имя как копия файла в Windows: «зомби — копия.webp», «зомби — копия(1).webp» и т.д.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/zombies/троянская-катапульта.jpg" alt="Троянская катапульта" onerror="this.src=''">
-          <h3>Троян-катапульта</h3>
-          <span class="docs-class" style="color:#ff4444">Вирусный</span>
-          <p>ХП: <b>8–10</b></p>
-          <p>Стреляет троянами по случайным растениям. Заражённые растения перестают работать. При уничтожении заражённого — из него вылезает зомби!</p>
+          <h3 data-i18n="docs.zombie.trojan.name">Троян-катапульта</h3>
+          <span class="docs-class" style="color:#ff4444" data-i18n="docs.zombie.trojan.class">Вирусный</span>
+          <p data-i18n-html="docs.zombie.trojan.stats">ХП: <b>8–10</b></p>
+          <p data-i18n="docs.zombie.trojan.desc">Стреляет троянами по случайным растениям. Заражённые растения перестают работать. При уничтожении заражённого — из него вылезает зомби!</p>
         </div>
         <div class="docs-card">
           <img src="static/img/zombies/систем-зомби.png" alt="Систем-зомби" onerror="this.src=''">
-          <h3>Систем-зомби</h3>
-          <span class="docs-class" style="color:#ff4444">Вирусный</span>
-          <p>ХП: <b>5–7</b> | Файл: <b>4</b> попадания</p>
-          <p>Несёт системный файл. Если файл уничтожен горошинами — BSOD! Используйте Папку-магнит.</p>
+          <h3 data-i18n="docs.zombie.system.name">Систем-зомби</h3>
+          <span class="docs-class" style="color:#ff4444" data-i18n="docs.zombie.system.class">Вирусный</span>
+          <p data-i18n-html="docs.zombie.system.stats">ХП: <b>5–7</b> | Файл: <b>4</b> попадания</p>
+          <p data-i18n="docs.zombie.system.desc">Несёт системный файл. Если файл уничтожен горошинами — BSOD! Используйте Папку-магнит.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/zombies/хдд-зомби.png" alt="HDD-зомби" onerror="this.src=''">
-          <h3>HDD-зомби</h3>
-          <span class="docs-class" style="color:#aaa">Бронированный</span>
-          <p>ХП: <b>10–12</b> | Броня: <b>3</b> попадания</p>
-          <p>Медленный и толстый. HDD-броня поглощает первые 3 удара, потом становится обычным.</p>
+          <h3 data-i18n="docs.zombie.hdd.name">HDD-зомби</h3>
+          <span class="docs-class" style="color:#aaa" data-i18n="docs.zombie.hdd.class">Бронированный</span>
+          <p data-i18n-html="docs.zombie.hdd.stats">ХП: <b>10–12</b> | Броня: <b>3</b> попадания</p>
+          <p data-i18n="docs.zombie.hdd.desc">Медленный и толстый. HDD-броня поглощает первые 3 удара, потом становится обычным.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/zombies/ссд-зомби.png" alt="SSD-зомби" onerror="this.src=''">
-          <h3>SSD-зомби</h3>
-          <span class="docs-class" style="color:#aaa">Бронированный</span>
-          <p>ХП: <b>3–5</b> | Броня: <b>2</b> попадания</p>
-          <p>Быстрый, но хрупкий. SSD-броня поглощает 2 удара.</p>
+          <h3 data-i18n="docs.zombie.ssd.name">SSD-зомби</h3>
+          <span class="docs-class" style="color:#aaa" data-i18n="docs.zombie.ssd.class">Бронированный</span>
+          <p data-i18n-html="docs.zombie.ssd.stats">ХП: <b>3–5</b> | Броня: <b>2</b> попадания</p>
+          <p data-i18n="docs.zombie.ssd.desc">Быстрый, но хрупкий. SSD-броня поглощает 2 удара.</p>
         </div>
         <div class="docs-card">
           <img src="static/img/zombies/winrar-зомби.png" alt="WinRAR-зомби" onerror="this.src=''">
-          <h3>WinRAR-зомби</h3>
-          <span class="docs-class" style="color:#f39c12">Архиватор</span>
-          <p>ХП: <b>5–7</b></p>
-          <p>Архивирует растения за 2 сек. Заархивированные растения не работают. Используйте Разархиватор!</p>
+          <h3 data-i18n="docs.zombie.winrar.name">WinRAR-зомби</h3>
+          <span class="docs-class" style="color:#f39c12" data-i18n="docs.zombie.winrar.class">Архиватор</span>
+          <p data-i18n-html="docs.zombie.winrar.stats">ХП: <b>5–7</b></p>
+          <p data-i18n="docs.zombie.winrar.desc">Архивирует растения за 2 сек. Заархивированные растения не работают. Используйте Разархиватор!</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/тарзанка.png" alt="Тарзанка" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.bungee.name">Тарзанка</h3>
+          <span class="docs-class" style="color:#4488ff" data-i18n="docs.zombie.bungee.class">Воздушный</span>
+          <p data-i18n-html="docs.zombie.bungee.stats">ХП: <b>8</b></p>
+          <p data-i18n="docs.zombie.bungee.desc">Прилетает сверху на растение, хватает его и утаскивает через 2 сек. Горошины не попадают! Контрится вишней и XSAS-грибом.</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/зомби-с-флагом.webp" alt="Зомби с флагом" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.flag.name">Зомби с флагом</h3>
+          <span class="docs-class" style="color:#3498db" data-i18n="docs.zombie.flag.class">Поддержка</span>
+          <p data-i18n-html="docs.zombie.flag.stats">ХП: <b>6–8</b></p>
+          <p data-i18n="docs.zombie.flag.desc">Юнит поддержки. Делает зомби на соседних рядах (сверху и снизу) бессмертными, пока стоит на той же клетке или на 1 назад. Убей его первым!</p>
         </div>
         <div class="docs-card boss-card">
           <img src="static/img/zombies/ваша-смерть.png" alt="Ваша смерть" onerror="this.src=''">
-          <h3>Ваша смерть</h3>
-          <span class="docs-class" style="color:#e74c3c">Босс</span>
-          <p>ХП: <b>∞</b></p>
-          <p>Финальный босс. Появляется в конце игры. Неуязвим.</p>
+          <h3 data-i18n="docs.zombie.boss.name">Ваша смерть</h3>
+          <span class="docs-class" style="color:#e74c3c" data-i18n="docs.zombie.boss.class">Босс</span>
+          <p data-i18n-html="docs.zombie.boss.stats">ХП: <b>∞</b></p>
+          <p data-i18n="docs.zombie.boss.desc">Финальный босс. Появляется в конце игры. Неуязвим.</p>
         </div>
       </div>
-      <h2>🖱️ Управление</h2>
+      <h2 data-i18n="docs.controls_heading">🖱️ Управление</h2>
       <table class="docs-table">
-        <tr><td><b>Перетащить иконку</b></td><td>Посадить растение на клетку рабочего стола</td></tr>
-        <tr><td><b>ПКМ на клетке</b></td><td>Посадить выбранное / убрать растение</td></tr>
-        <tr><td><b>ESC</b></td><td>Меню паузы</td></tr>
-        <tr><td><b>~</b></td><td>Панель разработчика (если включена в настройках)</td></tr>
-        <tr><td><b>Колёсико мыши</b></td><td>Прокрутка меню растений</td></tr>
+        <tr><td data-i18n-html="docs.ctrl.drag_html"><b>Перетащить иконку</b></td><td data-i18n="docs.ctrl.drag_desc">Посадить растение на клетку рабочего стола</td></tr>
+        <tr><td data-i18n-html="docs.ctrl.rmb_html"><b>ПКМ на клетке</b></td><td data-i18n="docs.ctrl.rmb_desc">Посадить выбранное / убрать растение</td></tr>
+        <tr><td data-i18n-html="docs.ctrl.esc_html"><b>ESC</b></td><td data-i18n="docs.ctrl.esc_desc">Меню паузы</td></tr>
+        <tr><td data-i18n-html="docs.ctrl.tilde_html"><b>~</b></td><td data-i18n="docs.ctrl.tilde_desc">Панель разработчика (если включена в настройках)</td></tr>
+        <tr><td data-i18n-html="docs.ctrl.scroll_html"><b>Колёсико мыши</b></td><td data-i18n="docs.ctrl.scroll_desc">Прокрутка меню растений</td></tr>
       </table>
-      <h2>🔧 Интерфейс</h2>
-      <p><b>Верхняя панель</b> — выбор растений и количество солнц.</p>
-      <p><b>Косилки</b> — стоят в начале каждого ряда. При касании зомби мчатся вперёд и сносят всё на своём пути.</p>
-      <p><b>Курсик</b> — ваш помощник с инвертированными цветами. Он перетаскивает зомби и помогает при обучении.</p>
-      <p><b>Ночной режим</b> — подсолнухи не работают, вместо них — солнце-грибы. Переключается в настройках.</p>
+      <h2 data-i18n="docs.interface_heading">🔧 Интерфейс</h2>
+      <p data-i18n-html="docs.ui.panel"><b>Верхняя панель</b> — выбор растений и количество солнц.</p>
+      <p data-i18n-html="docs.ui.mowers"><b>Косилки</b> — стоят в начале каждого ряда. При касании зомби мчатся вперёд и сносят всё на своём пути.</p>
+      <p data-i18n-html="docs.ui.cursik"><b>Курсик</b> — ваш помощник с инвертированными цветами. Он перетаскивает зомби и помогает при обучении.</p>
+      <p data-i18n-html="docs.ui.night"><b>Ночной режим</b> — подсолнухи не работают, вместо них — солнце-грибы. Переключается в настройках.</p>
     </div>
   </div>
 </div>
@@ -284,16 +312,16 @@ if (location.protocol === 'file:') {
     </div>
     <div id="plant-bar" class="plant-bar">
       </div>
-    <div id="wave-info">Волна: <span id="wave-num">0</span></div>
+    <div id="wave-info"><span data-i18n="hud.wave">Волна:</span> <span id="wave-num">0</span></div>
   </div>
 
   <div id="pause-menu" class="pause-menu hidden">
     <div class="pause-box">
-      <h2>⏸ Пауза</h2>
-      <button class="pause-btn" id="pause-resume">▶ Продолжить</button>
-      <button class="pause-btn" id="pause-info">ℹ️ Инфо</button>
-      <button class="pause-btn" id="pause-settings">⚙ Настройки</button>
-      <button class="pause-btn danger" id="pause-menu-btn">🏠 Главное меню</button>
+      <h2 data-i18n="pause.title">⏸ Пауза</h2>
+      <button class="pause-btn" id="pause-resume" data-i18n="pause.resume">▶ Продолжить</button>
+      <button class="pause-btn" id="pause-info" data-i18n="pause.info">ℹ️ Инфо</button>
+      <button class="pause-btn" id="pause-settings" data-i18n="pause.settings">⚙ Настройки</button>
+      <button class="pause-btn danger" id="pause-menu-btn" data-i18n="pause.menu">🏠 Главное меню</button>
     </div>
   </div>
 
@@ -309,60 +337,62 @@ if (location.protocol === 'file:') {
     </div>
     <div id="dev-tab-gui" class="dev-tab-content active">
       <div class="dev-section">
-        <label>☀ Солнце:</label>
+        <label data-i18n="dev.sun_label">☀ Солнце:</label>
         <input type="number" id="dev-sun-input" value="150" min="0" max="9999" style="width:60px">
-        <button id="dev-sun-give" class="dev-btn">Дать</button>
-        <button id="dev-sun-set" class="dev-btn">Уст.</button>
+        <button id="dev-sun-give" class="dev-btn" data-i18n="dev.give">Дать</button>
+        <button id="dev-sun-set" class="dev-btn" data-i18n="dev.set">Уст.</button>
       </div>
       <div class="dev-section">
-        <label>🧟 Спавн зомби:</label>
+        <label data-i18n="dev.spawn_zombie">🧟 Спавн зомби:</label>
         <select id="dev-zombie-type" class="dev-select">
-          <option value="zombie">Зомби</option>
-          <option value="system_zombie">Систем-зомби</option>
-          <option value="hdd_zombie">HDD-зомби</option>
-          <option value="ssd_zombie">SSD-зомби</option>
-          <option value="winrar_zombie">WinRAR-зомби</option>
-          <option value="trojan_catapult">Троян-катапульта</option>
-          <option value="your_death">Ваша смерть</option>
+          <option value="zombie" data-i18n="dev.zombie.zombie">Зомби</option>
+          <option value="system_zombie" data-i18n="dev.zombie.system">Систем-зомби</option>
+          <option value="hdd_zombie" data-i18n="dev.zombie.hdd">HDD-зомби</option>
+          <option value="ssd_zombie" data-i18n="dev.zombie.ssd">SSD-зомби</option>
+          <option value="winrar_zombie" data-i18n="dev.zombie.winrar">WinRAR-зомби</option>
+          <option value="trojan_catapult" data-i18n="dev.zombie.trojan">Троян-катапульта</option>
+          <option value="bungee" data-i18n="dev.zombie.bungee">Тарзанка</option>
+          <option value="flag_zombie" data-i18n="dev.zombie.flag">Зомби с флагом</option>
+          <option value="your_death" data-i18n="dev.zombie.boss">Ваша смерть</option>
         </select>
         <select id="dev-zombie-row" class="dev-select">
-          <option value="0">Ряд 1</option>
-          <option value="1">Ряд 2</option>
-          <option value="2">Ряд 3</option>
-          <option value="3">Ряд 4</option>
-          <option value="4">Ряд 5</option>
+          <option value="0" data-i18n="dev.row1">Ряд 1</option>
+          <option value="1" data-i18n="dev.row2">Ряд 2</option>
+          <option value="2" data-i18n="dev.row3">Ряд 3</option>
+          <option value="3" data-i18n="dev.row4">Ряд 4</option>
+          <option value="4" data-i18n="dev.row5">Ряд 5</option>
         </select>
-        <button id="dev-spawn-zombie" class="dev-btn">Спавн</button>
+        <button id="dev-spawn-zombie" class="dev-btn" data-i18n="dev.spawn">Спавн</button>
       </div>
       <div class="dev-section">
-        <label>🚜 Косилки:</label>
+        <label data-i18n="dev.mowers_label">🚜 Косилки:</label>
         <button class="dev-btn dev-mower-btn" data-row="0">1</button>
         <button class="dev-btn dev-mower-btn" data-row="1">2</button>
         <button class="dev-btn dev-mower-btn" data-row="2">3</button>
         <button class="dev-btn dev-mower-btn" data-row="3">4</button>
         <button class="dev-btn dev-mower-btn" data-row="4">5</button>
-        <button id="dev-respawn-mowers" class="dev-btn">Респавн</button>
+        <button id="dev-respawn-mowers" class="dev-btn" data-i18n="dev.respawn">Респавн</button>
       </div>
       <div class="dev-section">
-        <button id="dev-spawn-sun" class="dev-btn">☀ Спавн солнца</button>
-        <button id="dev-kill-all" class="dev-btn" style="background:#e74c3c">💀 Убить всех</button>
+        <button id="dev-spawn-sun" class="dev-btn" data-i18n="dev.spawn_sun">☀ Спавн солнца</button>
+        <button id="dev-kill-all" class="dev-btn dev-btn-red" data-i18n="dev.kill_all">💀 Убить всех</button>
       </div>
-      <div class="dev-section">
-        <label>📦 Кастомные волны:</label>
-        <div style="display:flex;gap:4px;align-items:center;margin-top:4px">
-          <select id="dev-cwave-select" class="dev-input" style="flex:1;min-width:0"></select>
-          <button id="dev-cwave-refresh" class="dev-btn" title="Обновить">🔄</button>
+      <div class="dev-section dev-cwave-section">
+        <label data-i18n="dev.custom_waves">📦 Кастомные волны:</label>
+        <div class="dev-cwave-row">
+          <select id="dev-cwave-select" class="dev-select dev-cwave-select"></select>
+          <button id="dev-cwave-refresh" class="dev-btn dev-btn-icon" data-i18n-title="dev.refresh" title="Обновить">🔄</button>
         </div>
-        <div style="display:flex;gap:4px;margin-top:4px">
-          <button id="dev-cwave-start" class="dev-btn" style="flex:1;background:#27ae60">▶ Запустить</button>
-          <button id="dev-cwave-stop" class="dev-btn" style="flex:1;background:#e74c3c">⏹ Стоп</button>
+        <div class="dev-cwave-row">
+          <button id="dev-cwave-start" class="dev-btn dev-btn-green" data-i18n="dev.start">▶ Запустить</button>
+          <button id="dev-cwave-stop" class="dev-btn dev-btn-red" data-i18n="dev.stop">⏹ Стоп</button>
         </div>
-        <div id="dev-cwave-info" style="font-size:11px;color:#aaa;margin-top:4px"></div>
+        <div id="dev-cwave-info" class="dev-cwave-info"></div>
       </div>
     </div>
     <div id="dev-tab-console" class="dev-tab-content">
       <div id="dev-console-output" class="dev-console-output">
-        <div class="dev-console-line hint">Введите help для списка команд</div>
+        <div class="dev-console-line hint" data-i18n="dev.console_hint">Введите help для списка команд</div>
       </div>
       <div class="dev-console-input-row">
         <span class="dev-console-prompt">&gt;</span>
@@ -374,8 +404,8 @@ if (location.protocol === 'file:') {
   <div id="tutorial-overlay" class="tutorial-overlay hidden">
     <div class="tutorial-box">
       <div id="tutorial-text"></div>
-      <button class="tutorial-btn" id="tutorial-next">Далее →</button>
-      <button class="tutorial-btn secondary" id="tutorial-skip">Пропустить</button>
+      <button class="tutorial-btn" id="tutorial-next" data-i18n="tutorial.next">Далее →</button>
+      <button class="tutorial-btn secondary" id="tutorial-skip" data-i18n="tutorial.skip">Пропустить</button>
     </div>
   </div>
 
@@ -384,20 +414,19 @@ if (location.protocol === 'file:') {
 <div id="screen-end" class="screen bsod-screen">
   <div class="bsod-content">
     <div class="bsod-face" id="bsod-face" style="opacity:0">:(</div>
-    <h1 class="bsod-title" id="bsod-title" style="opacity:0">КРИТИЧЕСКИЙ СБОЙ СИСТЕМЫ</h1>
-    <p class="bsod-text" id="bsod-text" style="opacity:0">Зомби проник в систему. Все файлы рабочего стола повреждены.<br>
-    Мы собираем данные об ошибке и восстанавливаем рабочий стол...</p>
-    <p class="bsod-progress" id="bsod-progress" style="opacity:0"><span id="bsod-percent">0</span>% выполнено</p>
-    <button class="bsod-btn" id="btn-end-menu" style="display:none">Перезагрузить рабочий стол</button>
+    <h1 class="bsod-title" id="bsod-title" style="opacity:0" data-i18n="bsod.title">КРИТИЧЕСКИЙ СБОЙ СИСТЕМЫ</h1>
+    <p class="bsod-text" id="bsod-text" style="opacity:0" data-i18n-html="bsod.text">Зомби проник в систему. Все файлы рабочего стола повреждены.<br>Мы собираем данные об ошибке и восстанавливаем рабочий стол...</p>
+    <p class="bsod-progress" id="bsod-progress" style="opacity:0"></p>
+    <button class="bsod-btn" id="btn-end-menu" style="display:none" data-i18n="bsod.restart">Перезагрузить рабочий стол</button>
   </div>
 </div>
 
 <div id="settings-modal" class="settings-modal hidden">
   <div class="settings-box">
-    <h2>⚙ Настройки</h2>
+    <h2 data-i18n="settings.title">⚙ Настройки</h2>
 
     <div class="settings-group">
-      <label class="settings-label">🔊 Громкость</label>
+      <label class="settings-label" data-i18n="settings.volume">🔊 Громкость</label>
       <div class="settings-slider-row">
         <input type="range" id="settings-volume" class="settings-range" min="0" max="100" value="80">
         <span id="settings-volume-val" class="settings-val">80%</span>
@@ -405,7 +434,7 @@ if (location.protocol === 'file:') {
     </div>
 
     <div class="settings-group">
-      <label class="settings-label">🎵 Музыка</label>
+      <label class="settings-label" data-i18n="settings.music">🎵 Музыка</label>
       <label class="toggle-3d">
         <input type="checkbox" id="settings-music-cb" checked>
         <span class="toggle-3d-track"><span class="toggle-3d-knob"></span></span>
@@ -414,7 +443,7 @@ if (location.protocol === 'file:') {
     </div>
 
     <div class="settings-group">
-      <label class="settings-label">💥 Эффекты</label>
+      <label class="settings-label" data-i18n="settings.sfx">💥 Эффекты</label>
       <label class="toggle-3d">
         <input type="checkbox" id="settings-sfx-cb" checked>
         <span class="toggle-3d-track"><span class="toggle-3d-knob"></span></span>
@@ -422,15 +451,24 @@ if (location.protocol === 'file:') {
       </label>
     </div>
 
+    <div class="settings-group">
+      <label class="settings-label" data-i18n="settings.language">🌐 Язык</label>
+      <label class="toggle-3d">
+        <input type="checkbox" id="settings-lang-cb">
+        <span class="toggle-3d-track"><span class="toggle-3d-knob"></span></span>
+        <span class="toggle-3d-label" id="settings-lang-label">Русский</span>
+      </label>
+    </div>
+
     <div class="settings-divider"></div>
 
     <div class="settings-group">
-      <label class="settings-label">🌙 Режим игры</label>
+      <label class="settings-label" data-i18n="settings.gamemode">🌙 Режим игры</label>
       <div class="toggle-3way" id="settings-gamemode" data-pos="0">
         <span class="toggle-3way-labels">
-          <span class="toggle-3way-lbl active" data-pos="0"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>ДЕНЬ</span>
-          <span class="toggle-3way-lbl" data-pos="1"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>НОЧЬ</span>
-          <span class="toggle-3way-lbl" data-pos="2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>СЛУЧ.</span>
+          <span class="toggle-3way-lbl active" data-pos="0"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg><span data-i18n="settings.gamemode.day">ДЕНЬ</span></span>
+          <span class="toggle-3way-lbl" data-pos="1"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span data-i18n="settings.gamemode.night">НОЧЬ</span></span>
+          <span class="toggle-3way-lbl" data-pos="2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg><span data-i18n="settings.gamemode.random">СЛУЧ.</span></span>
         </span>
         <div class="toggle-3way-track">
           <span class="toggle-3way-knob"></span>
@@ -441,7 +479,7 @@ if (location.protocol === 'file:') {
     <div class="settings-divider"></div>
 
     <div class="settings-group">
-      <label class="settings-label" style="color:#e74c3c">🛠 Режим разработчика</label>
+      <label class="settings-label" style="color:#e74c3c" data-i18n="settings.devmode">🛠 Режим разработчика</label>
       <label class="toggle-3d dev">
         <input type="checkbox" id="settings-devmode-cb">
         <span class="toggle-3d-track"><span class="toggle-3d-knob"></span></span>
@@ -449,32 +487,42 @@ if (location.protocol === 'file:') {
       </label>
     </div>
 
-    <button class="pause-btn small dev-only-btn" id="settings-clear-logs" style="display:none">Очистить логи</button>
+    <button class="pause-btn small dev-only-btn" id="settings-clear-logs" style="display:none" data-i18n="settings.clear_logs">Очистить логи</button>
 
-    <button class="pause-btn" id="settings-close">✔ Готово</button>
+    <button class="pause-btn" id="settings-close" data-i18n="settings.done">✔ Готово</button>
 
     <div class="settings-divider"></div>
-    <button class="pause-btn danger" id="settings-reset">🗑 Перезапустить полностью</button>
-    <p class="settings-hint">Игра как новая, будто только-что скачал</p>
+    <button class="pause-btn danger" id="settings-reset" data-i18n="settings.reset">🗑 Перезапустить полностью</button>
+    <p class="settings-hint" data-i18n="settings.reset.hint">Игра как новая, будто только-что скачал</p>
   </div>
 </div>
 
 <div id="confirm-logs-modal" class="confirm-modal hidden">
   <div class="confirm-box">
-    <p>Вы уверены? Это очистит весь .log файл.</p>
+    <p data-i18n="confirm.logs">Вы уверены? Это очистит весь .log файл.</p>
     <div class="confirm-buttons">
-      <button class="pause-btn danger" id="confirm-logs-yes">Да, очистить</button>
-      <button class="pause-btn" id="confirm-logs-no">Отмена</button>
+      <button class="pause-btn danger" id="confirm-logs-yes" data-i18n="confirm.logs_yes">Да, очистить</button>
+      <button class="pause-btn" id="confirm-logs-no" data-i18n="confirm.cancel">Отмена</button>
     </div>
   </div>
 </div>
 
 <div id="confirm-modal" class="confirm-modal hidden">
   <div class="confirm-box">
-    <p>Все сохранённые данные будут удалены.<br>Вы уверены?</p>
+    <p data-i18n-html="confirm.reset">Все сохранённые данные будут удалены.<br>Вы уверены?</p>
     <div class="confirm-buttons">
-      <button class="pause-btn danger" id="confirm-yes">Да, сбросить</button>
-      <button class="pause-btn" id="confirm-no">Отмена</button>
+      <button class="pause-btn danger" id="confirm-yes" data-i18n="confirm.reset_yes">Да, сбросить</button>
+      <button class="pause-btn" id="confirm-no" data-i18n="confirm.cancel2">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-devmode-modal" class="confirm-modal hidden">
+  <div class="confirm-box" style="max-width:420px">
+    <p data-i18n-html="confirm.devmode_text">В этом режиме все основные волны отключаются, но при этом даются возможности:<br><br>• Спавн любых зомби<br>• Управление солнцами<br>• Запуск кастомных волн<br>• Консоль разработчика</p>
+    <div class="confirm-buttons">
+      <button class="pause-btn danger" id="confirm-devmode-yes" disabled data-i18n="confirm.devmode_yes">Подтвердить (5)</button>
+      <button class="pause-btn" id="confirm-devmode-no" data-i18n="confirm.devmode_no">Отмена</button>
     </div>
   </div>
 </div>
@@ -488,6 +536,7 @@ if (location.protocol === 'file:') {
 <audio id="snd-menu" src="static/sounds/меню.mp3" preload="auto" loop></audio>
 <audio id="snd-defeat" src="static/sounds/поражение.mp3" preload="auto"></audio>
 
+<script src="static/js/lang.js"></script>
 <script src="static/js/engine.js"></script>
 <script src="static/js/ui.js"></script>
 <script src="static/js/game.js"></script>

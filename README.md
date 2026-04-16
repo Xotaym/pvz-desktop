@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.4-2ecc71?style=flat-square" />
+  <img src="https://img.shields.io/badge/version-0.2.6-2ecc71?style=flat-square" />
   <img src="https://img.shields.io/badge/Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" />
   <img src="https://img.shields.io/badge/Python%203.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
 </p>
@@ -86,6 +86,7 @@
 <td align="center" width="120"><img src="static/img/zombies/ссд-зомби.png" width="56" /><br><b>SSD</b></td>
 <td align="center" width="120"><img src="static/img/zombies/winrar-зомби.png" width="56" /><br><b>WinRAR</b></td>
 <td align="center" width="120"><img src="static/img/zombies/троянская-катапульта.jpg" width="56" /><br><b>Троян-катапульта</b></td>
+<td align="center" width="120"><img src="static/img/zombies/тарзанка.png" width="56" /><br><b>Тарзанка</b></td>
 <td align="center" width="120"><img src="static/img/zombies/ваша-смерть.png" width="56" /><br><b>Ваша Смерть</b></td>
 </tr>
 <tr>
@@ -95,6 +96,7 @@
 <td align="center"><sub>Быстрый, но хрупкий. SSD ломается после 2 попаданий.</sub></td>
 <td align="center"><sub>Архивирует растения. Используй разархиватор!</sub></td>
 <td align="center"><sub>Стреляет троянами. Заражает растения!</sub></td>
+<td align="center"><sub>Прилетает сверху, ворует растения. Контрится вишней/XSAS.</sub></td>
 <td align="center"><sub>???</sub></td>
 </tr>
 </table>

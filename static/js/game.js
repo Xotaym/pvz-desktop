@@ -4,35 +4,107 @@ const WAVE_CONFIGS = [
   { zombies: [
     { type: 'zombie', row: 2, delay: 0 },
     { type: 'zombie', row: 4, delay: 5000 },
+    { type: 'zombie', row: 0, delay: 8000 },
     { type: 'zombie', row: 1, delay: 10000 },
   ]},
   { zombies: [
     { type: 'zombie',      row: 0, delay: 0 },
-    { type: 'zombie', row: 3, delay: 3000 },
-    { type: 'zombie',      row: 1, delay: 6000 },
-    { type: 'zombie', row: 4, delay: 9000 },
+    { type: 'zombie',      row: 3, delay: 3000 },
+    { type: 'zombie',      row: 1, delay: 5000 },
+    { type: 'ssd_zombie',  row: 2, delay: 7000 },
+    { type: 'zombie',      row: 4, delay: 9000 },
+    { type: 'zombie',      row: 0, delay: 11000 },
   ]},
   { zombies: [
-    { type: 'zombie',      row: 0, delay: 0 },
-    { type: 'hdd_zombie',  row: 2, delay: 2000 },
-    { type: 'zombie', row: 4, delay: 4000 },
-    { type: 'ssd_zombie',  row: 1, delay: 5500 },
-    { type: 'zombie',           row: 3, delay: 7000 },
-    { type: 'trojan_catapult',  row: 1, delay: 8000 },
+    { type: 'zombie',           row: 0, delay: 0 },
+    { type: 'hdd_zombie',       row: 2, delay: 2000 },
+    { type: 'zombie',           row: 4, delay: 3500 },
+    { type: 'ssd_zombie',       row: 1, delay: 5000 },
+    { type: 'zombie',           row: 3, delay: 6500 },
+    { type: 'trojan_catapult',  row: 1, delay: 7500 },
     { type: 'ssd_zombie',       row: 0, delay: 9000 },
-    { type: 'hdd_zombie',       row: 4, delay: 11000 },
+    { type: 'zombie',           row: 4, delay: 10500 },
+    { type: 'hdd_zombie',       row: 3, delay: 12000 },
+  ]},
+  { zombies: [
+    { type: 'zombie',           row: 1, delay: 0 },
+    { type: 'winrar_zombie',    row: 3, delay: 2000 },
+    { type: 'zombie',           row: 0, delay: 3500 },
+    { type: 'flag_zombie',      row: 2, delay: 4500 },
+    { type: 'ssd_zombie',       row: 4, delay: 5500 },
+    { type: 'zombie',           row: 2, delay: 7000 },
+    { type: 'winrar_zombie',    row: 1, delay: 8000 },
+    { type: 'hdd_zombie',       row: 0, delay: 9500 },
+    { type: 'zombie',           row: 3, delay: 11000 },
+    { type: 'trojan_catapult',  row: 4, delay: 12500 },
   ]},
   { zombies: [
     { type: 'zombie',           row: 0, delay: 0 },
     { type: 'system_zombie',    row: 2, delay: 2000 },
-    { type: 'winrar_zombie',    row: 1, delay: 3500 },
-    { type: 'trojan_catapult',  row: 3, delay: 4000 },
-    { type: 'hdd_zombie',       row: 3, delay: 5000 },
-    { type: 'ssd_zombie',       row: 4, delay: 6000 },
-    { type: 'zombie',           row: 0, delay: 7500 },
-    { type: 'winrar_zombie',    row: 2, delay: 9000 },
-    { type: 'system_zombie',    row: 4, delay: 10500 },
-    { type: 'zombie',           row: 1, delay: 12000 },
+    { type: 'zombie',           row: 4, delay: 3000 },
+    { type: 'hdd_zombie',       row: 1, delay: 4500 },
+    { type: 'trojan_catapult',  row: 3, delay: 5500 },
+    { type: 'zombie',           row: 0, delay: 6500 },
+    { type: 'flag_zombie',      row: 2, delay: 7500 },
+    { type: 'ssd_zombie',       row: 4, delay: 8500 },
+    { type: 'winrar_zombie',    row: 1, delay: 9500 },
+    { type: 'system_zombie',    row: 3, delay: 11000 },
+    { type: 'zombie',           row: 2, delay: 12500 },
+  ]},
+  { zombies: [
+    { type: 'zombie',           row: 1, delay: 0 },
+    { type: 'ssd_zombie',       row: 3, delay: 1500 },
+    { type: 'bungee',           row: 0, delay: 2500 },
+    { type: 'hdd_zombie',       row: 2, delay: 3500 },
+    { type: 'zombie',           row: 4, delay: 4500 },
+    { type: 'trojan_catapult',  row: 1, delay: 5500 },
+    { type: 'flag_zombie',      row: 3, delay: 6000 },
+    { type: 'bungee',           row: 4, delay: 7000 },
+    { type: 'winrar_zombie',    row: 0, delay: 8000 },
+    { type: 'zombie',           row: 2, delay: 9000 },
+    { type: 'ssd_zombie',       row: 1, delay: 10000 },
+    { type: 'hdd_zombie',       row: 3, delay: 11000 },
+    { type: 'bungee',           row: 2, delay: 12000 },
+  ]},
+  { zombies: [
+    { type: 'zombie',           row: 0, delay: 0 },
+    { type: 'system_zombie',    row: 2, delay: 1000 },
+    { type: 'flag_zombie',      row: 3, delay: 2000 },
+    { type: 'winrar_zombie',    row: 1, delay: 3000 },
+    { type: 'trojan_catapult',  row: 4, delay: 3500 },
+    { type: 'hdd_zombie',       row: 0, delay: 4500 },
+    { type: 'ssd_zombie',       row: 2, delay: 5000 },
+    { type: 'bungee',           row: 1, delay: 5500 },
+    { type: 'zombie',           row: 3, delay: 6500 },
+    { type: 'flag_zombie',      row: 1, delay: 7000 },
+    { type: 'winrar_zombie',    row: 4, delay: 7500 },
+    { type: 'system_zombie',    row: 0, delay: 8500 },
+    { type: 'hdd_zombie',       row: 2, delay: 9500 },
+    { type: 'trojan_catapult',  row: 3, delay: 10500 },
+    { type: 'bungee',           row: 4, delay: 11500 },
+    { type: 'ssd_zombie',       row: 1, delay: 12500 },
+  ]},
+  { zombies: [
+    { type: 'hdd_zombie',       row: 0, delay: 0 },
+    { type: 'hdd_zombie',       row: 4, delay: 0 },
+    { type: 'flag_zombie',      row: 2, delay: 1000 },
+    { type: 'system_zombie',    row: 1, delay: 2000 },
+    { type: 'trojan_catapult',  row: 3, delay: 2500 },
+    { type: 'winrar_zombie',    row: 0, delay: 3500 },
+    { type: 'bungee',           row: 2, delay: 4000 },
+    { type: 'ssd_zombie',       row: 4, delay: 4500 },
+    { type: 'zombie',           row: 1, delay: 5500 },
+    { type: 'flag_zombie',      row: 3, delay: 6000 },
+    { type: 'system_zombie',    row: 4, delay: 7000 },
+    { type: 'trojan_catapult',  row: 0, delay: 7500 },
+    { type: 'hdd_zombie',       row: 2, delay: 8500 },
+    { type: 'bungee',           row: 1, delay: 9000 },
+    { type: 'winrar_zombie',    row: 3, delay: 9500 },
+    { type: 'ssd_zombie',       row: 0, delay: 10500 },
+    { type: 'zombie',           row: 4, delay: 11000 },
+    { type: 'flag_zombie',      row: 2, delay: 11500 },
+    { type: 'hdd_zombie',       row: 1, delay: 12500 },
+    { type: 'bungee',           row: 3, delay: 13000 },
   ]},
   { zombies: [], isBossWave: true },
 ];
@@ -105,7 +177,7 @@ function showWaveBanner(num) {
     transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
     text-shadow:0 0 12px rgba(127,255,0,0.5);
   `;
-  el.textContent = `— Волна ${num} —`;
+  el.textContent = Lang.t('hud.wave_banner', num);
   document.body.appendChild(el);
   requestAnimationFrame(() => {
     el.style.opacity = '1';
@@ -130,12 +202,12 @@ function startBossWave() {
 
     waveTimeouts.push(setTimeout(() => {
       if (S.gameOver) return;
-      CursikTalk("Хм.. Впервые вижу его. Кто это?");
+      CursikTalk(Lang.t('cursik.boss_who'));
     }, 1500));
 
     waveTimeouts.push(setTimeout(() => {
       if (S.gameOver) return;
-      CursikTalk("Нет.. нет! НЕЕЕТ!");
+      CursikTalk(Lang.t('cursik.boss_no'));
     }, 3500));
 
     waveTimeouts.push(setTimeout(() => {
@@ -215,43 +287,14 @@ function startBossWave() {
   }, 2500));
 }
 
-const DEATH_REASONS = {
-  zombie_reached: {
-    title: 'Зомби проник в систему',
-    text: 'Зомби добрался до края экрана и повредил системные файлы.',
-    tip: 'Совет: Сажайте горохострелы заранее и следите за рядами без косилок!',
-  },
-  boss: {
-    title: 'Неизвестная угроза уничтожила систему',
-    text: '"Ваша смерть" — необратимая угроза. Система не может быть защищена.',
-    tip: 'Это неизбежный финал текущей версии. Пока что спастись невозможно.',
-  },
-  system_file_destroyed: {
-    title: 'Системный файл уничтожен',
-    text: 'Горошины попали в системный файл, который нёс систем-зомби. Файл разрушен — критическая ошибка!',
-    tip: 'Совет: Не стреляйте по систем-зомби! Используйте Папку-магнит, чтобы забрать файл.',
-  },
-  winrar_file_collision: {
-    title: 'Файл заархивирован',
-    text: 'WinRAR-зомби заархивировал упавший системный файл. Система повреждена — критическая ошибка!',
-    tip: 'Совет: Быстро подбирайте упавшие системные файлы, пока WinRAR-зомби не добрались!',
-  },
-  magnet_destroyed: {
-    title: 'Папка-магнит уничтожена',
-    text: 'Зомби съели папку-магнит, которая удерживала системный файл. Файл потерян — критический сбой!',
-    tip: 'Совет: Защищайте папку-магнит горохострелами! Или быстрее перетащите файл в System32.',
-  },
-  trojan_file_destroyed: {
-    title: 'Троян уничтожил системный файл',
-    text: 'Троянский вирус попал в незащищённый системный файл. Файл повреждён — критическая ошибка!',
-    tip: 'Совет: Не оставляйте системные файлы на полу! Быстрее тащите их в System32.',
-  },
-  trojan_magnet_infected: {
-    title: 'Троян заразил хранилище файлов',
-    text: 'Троянский вирус попал в папку-магнит, которая удерживала системный файл. Файл заражён!',
-    tip: 'Совет: Защищайте папку-магнит от троянской катапульты!',
-  },
-};
+function getDeathReason(key) {
+  var k = key || 'zombie_reached';
+  return {
+    title: Lang.t('death.' + k + '.title'),
+    text:  Lang.t('death.' + k + '.text'),
+    tip:   Lang.t('death.' + k + '.tip'),
+  };
+}
 
 function triggerGameOver(zombie, reason) {
   const S = Engine.State;
@@ -302,7 +345,7 @@ function animateGameOverDrag(zombie, targetX, cb) {
 function showBSOD(reason) {
   const gameScreen = document.getElementById('screen-game');
   const endScreen  = document.getElementById('screen-end');
-  const info = DEATH_REASONS[reason] || DEATH_REASONS.zombie_reached;
+  const info = getDeathReason(reason);
 
   SFX.play('snd-defeat');
 
@@ -310,7 +353,7 @@ function showBSOD(reason) {
   document.getElementById('bsod-title').style.opacity = '0';
   document.getElementById('bsod-text').style.opacity = '0';
   document.getElementById('bsod-progress').style.opacity = '0';
-  document.getElementById('bsod-percent').textContent = '0';
+  document.getElementById('bsod-progress').innerHTML = Lang.t('bsod.progress', '0');
   document.getElementById('btn-end-menu').style.display = 'none';
 
   document.getElementById('bsod-title').textContent = info.title.toUpperCase();
@@ -340,7 +383,7 @@ function showBSOD(reason) {
 }
 
 function startBSODProgress() {
-  const percentEl = document.getElementById('bsod-percent');
+  const progressEl = document.getElementById('bsod-progress');
   const btnMenu = document.getElementById('btn-end-menu');
   let pct = 0;
 
@@ -348,7 +391,7 @@ function startBSODProgress() {
     pct += Engine.rndInt(1, 8);
     if (pct >= 100) {
       pct = 100;
-      percentEl.textContent = '100';
+      progressEl.innerHTML = Lang.t('bsod.progress', '100');
       setTimeout(() => {
         btnMenu.style.display = 'block';
         btnMenu.style.opacity = '0';
@@ -357,7 +400,7 @@ function startBSODProgress() {
       }, 500);
       return;
     }
-    percentEl.textContent = String(pct);
+    progressEl.innerHTML = Lang.t('bsod.progress', String(pct));
     setTimeout(tick, Engine.rndInt(200, 800));
   }
   setTimeout(tick, 600);
@@ -376,54 +419,19 @@ function CursikTalk(text, onDone) {
   }, duration);
 }
 
-const TUTORIAL_STEPS = [
-  {
-    text: "Привет! Я Курсик — ваш помощник. Добро пожаловать в Plants VS Zombies Desktop!",
-    highlight: null,
-    cursikTarget: 'center',
-  },
-  {
-    text: "Вверху слева — ваши солнышки. Они нужны для покупки растений. Давайте попробуем!",
-    highlight: 'sun-counter',
-    cursikTarget: 'sun-counter',
-    pulse: true,
-  },
-  {
-    text: "Соберите солнышко! Нажмите на него.",
-    highlight: null,
-    interactive: 'collect_sun',
-    cursikTarget: 'sun',
-  },
-  {
-    text: "Отлично! Панель растений — наверху. Перетащите подсолнух на любую клетку!",
-    highlight: 'plant-bar',
-    interactive: 'place_plant',
-    cursikTarget: 'plant-bar',
-    pulse: true,
-  },
-  {
-    text: "Молодец! Я буду перетаскивать зомби к вашим растениям по очереди. У каждого — синяя рамка выделения пока я его тащу.",
-    highlight: null,
-    cursikTarget: 'center',
-  },
-  {
-    text: "А ещё у меня есть помощники — мини-Курсики! Они перетаскивают солнца, горошины и косилки.",
-    highlight: null,
-    miniCursiks: true,
-    cursikTarget: 'center',
-  },
-  {
-    text: "В начале каждого ряда стоит косилка. Если зомби доберётся до неё — она поедет вперёд и сметёт всех на пути!",
-    highlight: null,
-    cursikTarget: 'lawnmower',
-  },
-  {
-    text: "ESC — пауза. ПКМ — убрать растение. Удачи! Нажми Инфо в меню паузы чтобы узнать больше.",
-    highlight: 'pause-menu',
-    showPause: true,
-    cursikTarget: 'center',
-  },
-];
+function getTutorialSteps() {
+  return [
+    { text: Lang.t('tutorial.step0'), highlight: null, cursikTarget: 'center' },
+    { text: Lang.t('tutorial.step1'), highlight: 'sun-counter', cursikTarget: 'sun-counter', pulse: true },
+    { text: Lang.t('tutorial.step2'), highlight: null, interactive: 'collect_sun', cursikTarget: 'sun' },
+    { text: Lang.t('tutorial.step3'), highlight: 'plant-bar', interactive: 'place_plant', cursikTarget: 'plant-bar', pulse: true },
+    { text: Lang.t('tutorial.step4'), highlight: null, cursikTarget: 'center' },
+    { text: Lang.t('tutorial.step5'), highlight: null, miniCursiks: true, cursikTarget: 'center' },
+    { text: Lang.t('tutorial.step6'), highlight: null, cursikTarget: 'lawnmower' },
+    { text: Lang.t('tutorial.step7'), highlight: 'pause-menu', showPause: true, cursikTarget: 'center' },
+  ];
+}
+var TUTORIAL_STEPS = getTutorialSteps();
 
 let tutorialStep = 0;
 let tutorialHandlersBound = false;
@@ -669,6 +677,12 @@ function startCustomWave(config) {
   const S = Engine.State;
 
   [...S.zombies].forEach(z => { if (z.alive) Engine.killZombie(z, true); });
+
+  for (var r = 0; r < Engine.GRID_ROWS; r++) {
+    for (var c = 0; c < Engine.GRID_COLS; c++) {
+      if (S.plants[r][c]) Engine.removePlant(c, r, true);
+    }
+  }
 
   S._customWave = true;
   if (config.startSun != null) { S.sun = config.startSun; } else { S.sun = 150; }

@@ -11,6 +11,7 @@ async function init() {
   UI.initCursik();
   UI.initPauseMenu();
   UI.initSettings();
+  Lang.applyDOM();
 
   document.getElementById('btn-play').addEventListener('click', onPlayClicked);
   document.getElementById('btn-docs').addEventListener('click', () => {
@@ -315,7 +316,7 @@ function initDevPanel() {
     function loadCwaveList() {
       const sel = document.getElementById('dev-cwave-select');
       const info = document.getElementById('dev-cwave-info');
-      sel.innerHTML = '<option value="">Загрузка...</option>';
+      sel.innerHTML = '<option value="">' + Lang.t('dev.gui.loading') + '</option>';
       fetch(`/api/custom_waves?token=${window._pvzToken}`)
         .then(r => r.json())
         .then(res => {
@@ -324,8 +325,8 @@ function initDevPanel() {
           _cwaveCache = list;
           sel.innerHTML = '';
           if (!list.length) {
-            sel.innerHTML = '<option value="">Нет волн</option>';
-            info.textContent = failed ? `${failed} файл(ов) не загружено` : '';
+            sel.innerHTML = '<option value="">' + Lang.t('dev.gui.no_waves') + '</option>';
+            info.textContent = failed ? Lang.t('dev.gui.files_failed', failed) : '';
             return;
           }
           list.forEach(w => {
@@ -335,9 +336,9 @@ function initDevPanel() {
             sel.appendChild(opt);
           });
           updateCwaveInfo();
-          if (failed) info.textContent += ` · ${failed} файл(ов) не загружено`;
+          if (failed) info.textContent += ' · ' + Lang.t('dev.gui.files_failed', failed);
         })
-        .catch(() => { sel.innerHTML = '<option value="">Ошибка</option>'; });
+        .catch(() => { sel.innerHTML = '<option value="">' + Lang.t('dev.gui.error') + '</option>'; });
     }
 
     function updateCwaveInfo() {
@@ -347,10 +348,10 @@ function initDevPanel() {
       if (!cfg) { info.textContent = ''; return; }
       const parts = [];
       if (cfg.author) parts.push(cfg.author);
-      parts.push(cfg.waves.length + ' волн');
+      parts.push(Lang.t('dev.gui.waves_count', cfg.waves.length));
       if (cfg.startSun != null) parts.push(cfg.startSun + '☀');
-      if (cfg.nightMode) parts.push('ночь');
-      if (cfg.plants) parts.push(cfg.plants.length + ' растений');
+      if (cfg.nightMode) parts.push(Lang.t('dev.gui.night'));
+      if (cfg.plants) parts.push(Lang.t('dev.gui.plants_count', cfg.plants.length));
       info.textContent = parts.join(' · ');
     }
 
@@ -429,51 +430,51 @@ function executeDevCommand(input) {
 
   switch (cmd) {
     case 'help':
-      consolePrint('Доступные команды:', 'hint');
-      consolePrint('  help                — список команд', 'hint');
-      consolePrint('  sun <n>             — установить солнце', 'hint');
-      consolePrint('  sun +<n>            — добавить солнце', 'hint');
-      consolePrint('  kill <A1-I5>        — убить зомби (столбец A-I, ряд 1-5)', 'hint');
-      consolePrint('  kill all            — убить всех зомби', 'hint');
-      consolePrint('  spawn <type> <row>  — спавн зомби (1-5)', 'hint');
-      consolePrint('  wave <n>            — запустить волну', 'hint');
-      consolePrint('  mower <row>         — активировать косилку (1-5)', 'hint');
-      consolePrint('  mowers              — респавн косилок', 'hint');
-      consolePrint('  cwave list          — список кастомных волн', 'hint');
-      consolePrint('  cwave load <имя>    — запустить кастомную волну', 'hint');
-      consolePrint('  cwave stop          — остановить кастомную волну', 'hint');
-      consolePrint('  clear               — очистить консоль', 'hint');
+      consolePrint(Lang.t('dev.cmd.help'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_help'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_sun'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_sun_add'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_kill'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_kill_all'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_spawn'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_wave'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_mower'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_mowers'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_cwave_list'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_cwave_load'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_cwave_stop'), 'hint');
+      consolePrint(Lang.t('dev.cmd.help_clear'), 'hint');
       break;
 
     case 'sun': {
       const arg = parts[1];
-      if (!arg) { consolePrint('Использование: sun <n> или sun +<n>', 'error'); break; }
+      if (!arg) { consolePrint(Lang.t('dev.cmd.sun_usage'), 'error'); break; }
       if (arg.startsWith('+')) {
         const v = parseInt(arg.slice(1));
-        if (isNaN(v)) { consolePrint('Неверное число', 'error'); break; }
+        if (isNaN(v)) { consolePrint(Lang.t('dev.cmd.invalid_number'), 'error'); break; }
         S.sun += v;
         UI.updateSun();
-        consolePrint('Солнце: ' + S.sun + ' (+' + v + ')', 'success');
+        consolePrint(Lang.t('dev.cmd.sun_added', S.sun, v), 'success');
       } else {
         const v = parseInt(arg);
-        if (isNaN(v)) { consolePrint('Неверное число', 'error'); break; }
+        if (isNaN(v)) { consolePrint(Lang.t('dev.cmd.invalid_number'), 'error'); break; }
         S.sun = v;
         UI.updateSun();
-        consolePrint('Солнце установлено: ' + v, 'success');
+        consolePrint(Lang.t('dev.cmd.sun_set', v), 'success');
       }
       break;
     }
 
     case 'kill': {
       const arg = parts[1];
-      if (!arg) { consolePrint('Использование: kill <A1-I5> или kill all', 'error'); break; }
+      if (!arg) { consolePrint(Lang.t('dev.cmd.kill_usage'), 'error'); break; }
       if (arg.toLowerCase() === 'all') {
         let count = 0;
         [...S.zombies].forEach(z => { if (z.alive) { Engine.killZombie(z, true); count++; } });
-        consolePrint('Убито зомби: ' + count, 'success');
+        consolePrint(Lang.t('dev.cmd.killed_count', count), 'success');
       } else {
         const cell = parseCell(arg);
-        if (!cell) { consolePrint('Неверная клетка: ' + arg + ' (формат: A1-I5)', 'error'); break; }
+        if (!cell) { consolePrint(Lang.t('dev.cmd.invalid_cell', arg), 'error'); break; }
         const o = Engine.getGridOrigin();
         const cellLeft = o.x + cell.col * Engine.CELL_W;
         const cellRight = cellLeft + Engine.CELL_W;
@@ -482,9 +483,9 @@ function executeDevCommand(input) {
         );
         if (zombie) {
           Engine.killZombie(zombie, true);
-          consolePrint('Убит зомби на ' + arg.toUpperCase(), 'success');
+          consolePrint(Lang.t('dev.cmd.killed_at', arg.toUpperCase()), 'success');
         } else {
-          consolePrint('Зомби не найден на ' + arg.toUpperCase(), 'error');
+          consolePrint(Lang.t('dev.cmd.not_found_at', arg.toUpperCase()), 'error');
         }
       }
       break;
@@ -493,38 +494,38 @@ function executeDevCommand(input) {
     case 'spawn': {
       const type = parts[1];
       const rowStr = parts[2];
-      if (!type || !rowStr) { consolePrint('Использование: spawn <type> <row 1-5>', 'error'); break; }
+      if (!type || !rowStr) { consolePrint(Lang.t('dev.cmd.spawn_usage'), 'error'); break; }
       const row = parseInt(rowStr) - 1;
-      if (row < 0 || row > 4) { consolePrint('Ряд должен быть 1-5', 'error'); break; }
+      if (row < 0 || row > 4) { consolePrint(Lang.t('dev.cmd.row_range'), 'error'); break; }
       const validTypes = ['zombie','system_zombie','hdd_zombie','ssd_zombie','winrar_zombie','trojan_catapult','your_death'];
       if (!validTypes.includes(type)) {
-        consolePrint('Типы: ' + validTypes.join(', '), 'error');
+        consolePrint(Lang.t('dev.cmd.types', validTypes.join(', ')), 'error');
         break;
       }
       Engine.spawnZombie(type, row);
-      consolePrint('Спавн ' + type + ' в ряду ' + (row + 1), 'success');
+      consolePrint(Lang.t('dev.cmd.spawned', type, row + 1), 'success');
       break;
     }
 
     case 'wave': {
       const n = parseInt(parts[1]);
-      if (isNaN(n) || n < 1) { consolePrint('Использование: wave <n> (1-5)', 'error'); break; }
+      if (isNaN(n) || n < 1) { consolePrint(Lang.t('dev.cmd.wave_usage'), 'error'); break; }
       Game.startWave(n - 1);
-      consolePrint('Запущена волна ' + n, 'success');
+      consolePrint(Lang.t('dev.cmd.wave_started', n), 'success');
       break;
     }
 
     case 'mower': {
       const row = parseInt(parts[1]) - 1;
-      if (row < 0 || row > 4) { consolePrint('Ряд должен быть 1-5', 'error'); break; }
+      if (row < 0 || row > 4) { consolePrint(Lang.t('dev.cmd.row_range'), 'error'); break; }
       Engine.triggerLawnmower(row);
-      consolePrint('Косилка активирована: ряд ' + (row + 1), 'success');
+      consolePrint(Lang.t('dev.cmd.mower_triggered', row + 1), 'success');
       break;
     }
 
     case 'mowers':
       Engine.spawnLawnmowers();
-      consolePrint('Косилки респавнены', 'success');
+      consolePrint(Lang.t('dev.cmd.mowers_respawned'), 'success');
       break;
 
     case 'clear': {
@@ -536,50 +537,50 @@ function executeDevCommand(input) {
     case 'cwave': {
       const sub = (parts[1] || '').toLowerCase();
       if (sub === 'list') {
-        consolePrint('Загрузка списка...', 'hint');
+        consolePrint(Lang.t('dev.cmd.loading_list'), 'hint');
         fetch(`/api/custom_waves?token=${window._pvzToken}`)
           .then(r => r.json())
           .then(res => {
             const list = res.waves || [];
             const failed = res.failed || 0;
-            if (!list.length && !failed) { consolePrint('Нет кастомных волн в custom_waves/', 'error'); return; }
+            if (!list.length && !failed) { consolePrint(Lang.t('dev.cmd.no_waves'), 'error'); return; }
             if (list.length) {
-              consolePrint(`Найдено волн: ${list.length}`, 'success');
+              consolePrint(Lang.t('dev.cmd.waves_found', list.length), 'success');
               list.forEach(w => {
                 const author = w.author ? ` (${w.author})` : '';
                 const desc = w.description ? ` — ${w.description}` : '';
                 consolePrint(`  ${w._filename}: ${w.name || '?'}${author}${desc}`, 'hint');
               });
             }
-            if (failed) consolePrint(`${failed} файл(ов) не загружено (невалидный JSON)`, 'error');
+            if (failed) consolePrint(Lang.t('dev.cmd.files_failed', failed), 'error');
           })
-          .catch(() => consolePrint('Ошибка загрузки', 'error'));
+          .catch(() => consolePrint(Lang.t('dev.cmd.load_error'), 'error'));
       } else if (sub === 'load') {
         const name = parts[2];
-        if (!name) { consolePrint('Использование: cwave load <имя файла>', 'error'); break; }
-        consolePrint('Загрузка ' + name + '...', 'hint');
+        if (!name) { consolePrint(Lang.t('dev.cmd.cwave_load_usage'), 'error'); break; }
+        consolePrint(Lang.t('dev.cmd.loading_wave', name), 'hint');
         fetch(`/api/custom_waves?token=${window._pvzToken}`)
           .then(r => r.json())
           .then(res => {
             const list = res.waves || [];
             const cfg = list.find(w => w._filename === name);
-            if (!cfg) { consolePrint('Волна "' + name + '" не найдена. Используйте cwave list', 'error'); return; }
+            if (!cfg) { consolePrint(Lang.t('dev.cmd.wave_not_found', name), 'error'); return; }
             Game.startCustomWave(cfg);
-            consolePrint(`Запущена: ${cfg.name || name} (${cfg.waves.length} волн)`, 'success');
+            consolePrint(Lang.t('dev.cmd.cwave_started', cfg.name || name, cfg.waves.length), 'success');
           })
-          .catch(() => consolePrint('Ошибка загрузки', 'error'));
+          .catch(() => consolePrint(Lang.t('dev.cmd.load_error'), 'error'));
       } else if (sub === 'stop') {
-        if (!S._customWave) { consolePrint('Кастомная волна не запущена', 'error'); break; }
+        if (!S._customWave) { consolePrint(Lang.t('dev.cmd.cwave_not_running'), 'error'); break; }
         Game.stopCustomWave();
-        consolePrint('Кастомная волна остановлена', 'success');
+        consolePrint(Lang.t('dev.cmd.cwave_stopped'), 'success');
       } else {
-        consolePrint('Использование: cwave list | load <имя> | stop', 'error');
+        consolePrint(Lang.t('dev.cmd.cwave_usage'), 'error');
       }
       break;
     }
 
     default:
-      consolePrint('Неизвестная команда: ' + cmd + '. Введите help', 'error');
+      consolePrint(Lang.t('dev.cmd.unknown', cmd), 'error');
   }
 }
 
