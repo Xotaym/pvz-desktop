@@ -523,9 +523,11 @@ function emptyChomper(col, row) {
   const p = State.plants[row] && State.plants[row][col];
   if (!p || p.type !== 'basket_chomper' || !p.isFull) return;
   p.isFull = false;
-  const img = p.el.querySelector('.icon-img');
-  if (img) img.src = 'static/img/plants/' + PLANTS.basket_chomper.file;
   p.el.classList.remove('chomper-full');
+  if (!p.archived) {
+    const img = p.el.querySelector('.icon-img');
+    if (img) img.src = 'static/img/plants/' + PLANTS.basket_chomper.file;
+  }
   spawnParticles(
     parseInt(p.el.style.left) + CELL_W / 2,
     parseInt(p.el.style.top) + CELL_H / 2,
@@ -558,10 +560,13 @@ function showChomperContextMenu(col, row, e) {
   menu.style.left = (pos.x - 10) + 'px';
   menu.style.top = (pos.y + CELL_H + 2) + 'px';
 
-  var emptyItem = makeEl('div', 'win-ctx-item' + (p.isFull ? '' : ' disabled'), menu);
+  var onCooldown = p._lastManualEmpty && (performance.now() - p._lastManualEmpty < 5000);
+  var canEmpty = p.isFull && !p.archived && !p.infected && !onCooldown;
+  var emptyItem = makeEl('div', 'win-ctx-item' + (canEmpty ? '' : ' disabled'), menu);
   emptyItem.textContent = Lang.t('context.empty_basket');
-  if (p.isFull) {
+  if (canEmpty) {
     emptyItem.addEventListener('click', function() {
+      p._lastManualEmpty = performance.now();
       emptyChomper(col, row);
       clearTimer('chomper_digest_' + col + '_' + row);
       dismissChomperMenu();
@@ -1394,9 +1399,9 @@ const CURSIK_DRAG_TIME = 500;
 function getCursikCooldown() {
   const aliveZombies = State.zombies.filter(z => z.alive).length;
   const wave = State.wave || 0;
-  const zombieFactor = Math.min(0.5, aliveZombies * 0.04);
-  const waveFactor = Math.min(0.3, wave * 0.06);
-  return Math.max(40, Math.round(CURSIK_BASE_COOLDOWN * (1 - zombieFactor - waveFactor)));
+  const zombieFactor = Math.min(0.6, aliveZombies * 0.06);
+  const waveFactor = Math.min(0.3, wave * 0.05);
+  return Math.max(20, Math.round(CURSIK_BASE_COOLDOWN * (1 - zombieFactor - waveFactor)));
 }
 
 function processCursikQueue() {
@@ -1423,12 +1428,19 @@ function processCursikQueue() {
     return;
   }
 
+  if (zombie._eatTimer) {
+    State.cursik.queue.shift();
+    State.cursik.queue.push(zombieId);
+    setTimeout(processCursikQueue, 500);
+    return;
+  }
+
   const o = getGridOrigin();
 
   const zombieCol = Math.floor((zombie.x - o.x) / CELL_W);
   if (zombieCol >= 0 && zombieCol < GRID_COLS) {
-    const targetCol = zombieCol - 1;
-    if (targetCol >= 0 && State.plants[zombie.row][targetCol]) {
+    const cp = State.plants[zombie.row][zombieCol];
+    if (cp && !(cp.type === 'basket_chomper' && !cp.isFull && !cp.archived && !cp.infected)) {
       State.cursik.queue.shift();
       State.cursik.queue.push(zombieId);
       setTimeout(processCursikQueue, 800);
@@ -1515,13 +1527,16 @@ const DRAG_BASE_MS = 140;
 
 function getDragStepMs() {
   const aliveZombies = State.zombies.filter(z => z.alive).length;
-  const speedup = Math.min(0.3, aliveZombies * 0.02);
-  return Math.max(80, Math.round(DRAG_BASE_MS * (1 - speedup)));
+  const wave = State.wave || 0;
+  const zombieSpeedup = Math.min(0.5, aliveZombies * 0.04);
+  const waveSpeedup = Math.min(0.25, wave * 0.04);
+  return Math.max(40, Math.round(DRAG_BASE_MS * (1 - zombieSpeedup - waveSpeedup)));
 }
 
 function animateZombieMove(zombie, targetX, duration, cb) {
   const ck = State.cursik;
   const dir = targetX < zombie.x ? -1 : 1;
+  const o = getGridOrigin();
 
   function dragStep() {
     if (!zombie.alive || zombie.reachedEnd) {
@@ -1534,7 +1549,26 @@ function animateZombieMove(zombie, targetX, duration, cb) {
 
     const remaining = Math.abs(targetX - zombie.x);
     const step = Math.min(DRAG_STEP_PX, remaining);
-    zombie.x += dir * step;
+    const newX = zombie.x + dir * step;
+
+    if (dir === -1) {
+      const oldCol = Math.floor((zombie.x - o.x) / CELL_W);
+      const newCol = Math.floor((newX - o.x) / CELL_W);
+      if (newCol >= 0 && newCol < GRID_COLS && newCol < oldCol) {
+        const pl = State.plants[zombie.row][newCol];
+        if (pl && !(pl.type === 'basket_chomper' && !pl.isFull && !pl.archived && !pl.infected)) {
+          zombie.x = o.x + newCol * CELL_W + CELL_W - 1;
+          posEl(zombie.el, zombie.x, zombie.y);
+          ck.x = zombie.x + 37;
+          ck.y = zombie.y + 48;
+          posEl(ck.el, ck.x - 20, ck.y - 20);
+          cb && cb();
+          return;
+        }
+      }
+    }
+
+    zombie.x = newX;
     posEl(zombie.el, zombie.x, zombie.y);
 
     ck.x = zombie.x + 37;
@@ -1737,6 +1771,13 @@ function startGameLoop() {
       var z = State.zombies.find(zz => zz.id === id);
       return z && z.alive;
     });
+    for (var i = 0; i < State.zombies.length; i++) {
+      var z = State.zombies[i];
+      if (!z.alive || z.isBungee || z.reachedEnd) continue;
+      if (State.cursik.queue.indexOf(z.id) === -1) {
+        State.cursik.queue.push(z.id);
+      }
+    }
     if (!State.cursik.busy && State.cursik.queue.length > 0) {
       processCursikQueue();
     }
@@ -2173,12 +2214,10 @@ function checkPlantsEaten() {
 
     const plant = State.plants[zombie.row][col];
     if (plant) {
-      if (plant.type === 'basket_chomper' && !plant.archived && !plant.infected && !zombie.isBoss) {
-        if (!plant.isFull) {
-          if (zombie._eatTimer) { clearInterval(zombie._eatTimer); zombie._eatTimer = null; }
-          if (zombie._archiveTimer) { clearTimeout(zombie._archiveTimer); zombie._archiveTimer = null; }
-          chomperEatZombie(plant, zombie);
-        }
+      if (plant.type === 'basket_chomper' && !plant.isFull && !plant.archived && !plant.infected && !zombie.isBoss) {
+        if (zombie._eatTimer) { clearInterval(zombie._eatTimer); zombie._eatTimer = null; }
+        if (zombie._archiveTimer) { clearTimeout(zombie._archiveTimer); zombie._archiveTimer = null; }
+        chomperEatZombie(plant, zombie);
         return;
       }
       if (zombie.canArchive && !zombie.abilitiesDisabled && !zombie._archiveTimer && !plant.archived) {
@@ -2209,9 +2248,10 @@ function checkPlantsEaten() {
         }, 2000);
       }
 
-      if (zombie.canArchive) return;
+      if (zombie.canArchive && !plant.archived) return;
 
       if (!zombie._eatTimer) {
+        const eatSpeed = zombie.canArchive ? 4000 : 2000;
         zombie._eatTimer = setInterval(() => {
           if (!zombie.alive) { clearInterval(zombie._eatTimer); zombie._eatTimer = null; return; }
           if (State.paused || State.gameOver) return;
@@ -2219,7 +2259,7 @@ function checkPlantsEaten() {
           if (!p) { clearInterval(zombie._eatTimer); zombie._eatTimer = null; return; }
           p.hp--;
           if (p.hp <= 0) showDeleteDialog(col, zombie.row, p);
-        }, 2000);
+        }, eatSpeed);
       }
     } else {
       if (zombie._eatTimer) { clearInterval(zombie._eatTimer); zombie._eatTimer = null; }
