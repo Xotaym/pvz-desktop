@@ -63,7 +63,7 @@ def get_manifest():
     if MANIFEST_FILE.exists():
         with open(MANIFEST_FILE, encoding="utf-8") as f:
             return json.load(f)
-    return {"version": "0.2.6", "name": "Plants VS Zombies Desktop"}
+    return {"version": "0.3.0", "name": "Plants VS Zombies Desktop"}
 
 import re
 

@@ -102,7 +102,7 @@ if (location.protocol === 'file:') {
     <button class="menu-btn" id="btn-docs" data-i18n="menu.docs">📖 Документация</button>
     <button class="menu-btn" id="btn-settings" data-i18n="menu.settings">⚙ Настройки</button>
   </div>
-  <div class="menu-version" id="menu-version">v0.2.6</div>
+  <div class="menu-version" id="menu-version">v0.3.0</div>
 </div>
 
 <div id="screen-docs" class="screen">
@@ -142,6 +142,20 @@ if (location.protocol === 'file:') {
           <span class="docs-class" style="color:#7fff00" data-i18n="docs.plant.siamese.class">Атакующее</span>
           <p data-i18n-html="docs.plant.siamese.stats">Стоимость: <b>125 ☀</b></p>
           <p data-i18n="docs.plant.siamese.desc">Стреляет горошинами в обе стороны — и вправо, и влево!</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/plants/двойной-горохострел.png" alt="Двойной горохострел" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.double_peashooter.name">Двойной горохострел</h3>
+          <span class="docs-class" style="color:#7fff00" data-i18n="docs.plant.double_peashooter.class">Атакующее</span>
+          <p data-i18n-html="docs.plant.double_peashooter.stats">Стоимость: <b>125 ☀</b></p>
+          <p data-i18n="docs.plant.double_peashooter.desc">Стреляет двумя горошинами за раз. Удвоенная огневая мощь!</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/plants/запретострел.png" alt="Запретострел" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.snow_peashooter.name">Запретострел</h3>
+          <span class="docs-class" style="color:#00bfff" data-i18n="docs.plant.snow_peashooter.class">Атакующее / Замедление</span>
+          <p data-i18n-html="docs.plant.snow_peashooter.stats">Стоимость: <b>100 ☀</b></p>
+          <p data-i18n="docs.plant.snow_peashooter.desc">Стреляет ледяными горошинами, замедляя зомби. Синий лед - запретная технология!</p>
         </div>
         <div class="docs-card">
           <img src="static/img/plants/xsas-гриб.png" alt="XSAS гриб" onerror="this.src=''">
@@ -185,20 +199,34 @@ if (location.protocol === 'file:') {
           <p data-i18n-html="docs.plant.cherry.stats">Стоимость: <b>80 ☀</b></p>
           <p data-i18n="docs.plant.cherry.desc">Через 2 сек. взрывается в области 3x3, убивая до 5 самых сильных зомби. Системный файл при этом не уничтожается!</p>
         </div>
-      </div>
-      <div class="docs-card">
-        <img src="static/img/plants/авасторех.jpg" alt="Авасторех" onerror="this.src=''">
+        <div class="docs-card">
+          <img src="static/img/plants/авасторех.jpg" alt="Авасторех" onerror="this.src=''">
           <h3 data-i18n="docs.plant.avast_nut.name">Авасторех</h3>
           <span class="docs-class" style="color:#2ecc71" data-i18n="docs.plant.avast_nut.class">Защита</span>
           <p data-i18n-html="docs.plant.avast_nut.stats">Стоимость: <b>100 ☀</b> | ХП: <b>10</b></p>
           <p data-i18n="docs.plant.avast_nut.desc">Крепкий орешек. Нейтрализует трояны и защищает системные файлы в радиусе 3×3 клетки. Систем-зомби в радиусе роняют файл безопасно.</p>
-      </div>
-      <div class="docs-card">
-        <img src="static/img/plants/корзинокусалка.png" alt="Корзинокусалка" onerror="this.src=''">
+        </div>
+        <div class="docs-card">
+          <img src="static/img/plants/мина.png" alt="Логическая мина" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.logic_mine.name">Логическая мина</h3>
+          <span class="docs-class" style="color:#ff3300" data-i18n="docs.plant.logic_mine.class">Взрывное</span>
+          <p data-i18n-html="docs.plant.logic_mine.stats">Стоимость: <b>25 ☀</b></p>
+          <p data-i18n="docs.plant.logic_mine.desc">Взрывается при контакте с зомби, уничтожая всех на своей клетке. Дешевая, одноразовая, но эффективная.</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/plants/торент-фонарь.png" alt="Торент-фонарь" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.torrent_lantern.name">Торент-фонарь</h3>
+          <span class="docs-class" style="color:#00ccff" data-i18n="docs.plant.torrent_lantern.class">Парное</span>
+          <p data-i18n-html="docs.plant.torrent_lantern.stats">Стоимость: <b>75 ☀</b> | Макс. на поле: <b>2</b></p>
+          <p data-i18n="docs.plant.torrent_lantern.desc">Работает в паре. Каждое растение в радиусе 3x3 создает бесплатный слот у второго фонаря.</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/plants/корзинокусалка.png" alt="Корзинокусалка" onerror="this.src=''">
           <h3 data-i18n="docs.plant.basket_chomper.name">Корзинокусалка</h3>
           <span class="docs-class" style="color:#e67e22" data-i18n="docs.plant.basket_chomper.class">Поглощающее</span>
           <p data-i18n-html="docs.plant.basket_chomper.stats">Стоимость: <b>75 ☀</b> | Переваривание: <b>18 сек</b></p>
           <p data-i18n="docs.plant.basket_chomper.desc">Мгновенно съедает зомби, но потом переваривает 18 сек. ПКМ → «Очистить корзину» - ручная очистка. Не ест системный файл у систем-зомби - файл безопасно выпадает.</p>
+        </div>
       </div>
       <h2 data-i18n="docs.zombies_heading">🧟 Зомби</h2>
       <div class="docs-grid">
@@ -258,6 +286,20 @@ if (location.protocol === 'file:') {
           <p data-i18n-html="docs.zombie.flag.stats">ХП: <b>6–8</b></p>
           <p data-i18n="docs.zombie.flag.desc">Юнит поддержки. Делает зомби на соседних рядах (сверху и снизу) бессмертными, пока стоит на той же клетке или на 1 назад. Убей его первым!</p>
         </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/шест-громкий.png" alt="Шест-громкий" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.pole_loud.name">Шест-громкий</h3>
+          <span class="docs-class" style="color:#ff8800" data-i18n="docs.zombie.pole_loud.class">Аудио-хакер</span>
+          <p data-i18n-html="docs.zombie.pole_loud.stats">ХП: <b>4-6</b></p>
+          <p data-i18n="docs.zombie.pole_loud.desc">Повышает громкость игры при приближении. Чем ближе - тем громче!</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/шест-тихий.png" alt="Шест-тихий" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.pole_quiet.name">Шест-тихий</h3>
+          <span class="docs-class" style="color:#6644aa" data-i18n="docs.zombie.pole_quiet.class">Аудио-хакер</span>
+          <p data-i18n-html="docs.zombie.pole_quiet.stats">ХП: <b>4-6</b></p>
+          <p data-i18n="docs.zombie.pole_quiet.desc">Понижает громкость игры при приближении. Тишина - лучший друг зомби.</p>
+        </div>
         <div class="docs-card boss-card">
           <img src="static/img/zombies/ваша-смерть.png" alt="Ваша смерть" onerror="this.src=''">
           <h3 data-i18n="docs.zombie.boss.name">Ваша смерть</h3>
@@ -312,7 +354,7 @@ if (location.protocol === 'file:') {
     </div>
     <div id="plant-bar" class="plant-bar">
       </div>
-    <div id="wave-info"><span data-i18n="hud.wave">Волна:</span> <span id="wave-num">0</span></div>
+    <div id="wave-info"><span data-i18n="hud.wave">Волна:</span> <span id="wave-num">0</span><span id="mode-indicators"></span></div>
   </div>
 
   <div id="pause-menu" class="pause-menu hidden">
@@ -353,6 +395,8 @@ if (location.protocol === 'file:') {
           <option value="trojan_catapult" data-i18n="dev.zombie.trojan">Троян-катапульта</option>
           <option value="bungee" data-i18n="dev.zombie.bungee">Тарзанка</option>
           <option value="flag_zombie" data-i18n="dev.zombie.flag">Зомби с флагом</option>
+          <option value="pole_loud" data-i18n="dev.zombie.pole_loud">Шест (громкий)</option>
+          <option value="pole_quiet" data-i18n="dev.zombie.pole_quiet">Шест (тихий)</option>
           <option value="your_death" data-i18n="dev.zombie.boss">Ваша смерть</option>
         </select>
         <select id="dev-zombie-row" class="dev-select">
@@ -452,6 +496,15 @@ if (location.protocol === 'file:') {
     </div>
 
     <div class="settings-group">
+      <label class="settings-label" style="color:#e67e22" data-i18n="settings.funmode">🐛 Фан-режим</label>
+      <label class="toggle-3d fun">
+        <input type="checkbox" id="settings-funmode-cb">
+        <span class="toggle-3d-track"><span class="toggle-3d-knob"></span></span>
+        <span class="toggle-3d-label">ВЫКЛ</span>
+      </label>
+    </div>
+
+    <div class="settings-group">
       <label class="settings-label" data-i18n="settings.language">🌐 Язык</label>
       <label class="toggle-3d">
         <input type="checkbox" id="settings-lang-cb">
@@ -523,6 +576,16 @@ if (location.protocol === 'file:') {
     <div class="confirm-buttons">
       <button class="pause-btn danger" id="confirm-devmode-yes" disabled data-i18n="confirm.devmode_yes">Подтвердить (5)</button>
       <button class="pause-btn" id="confirm-devmode-no" data-i18n="confirm.devmode_no">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-funmode-modal" class="confirm-modal hidden">
+  <div class="confirm-box" style="max-width:460px">
+    <p data-i18n-html="confirm.funmode_text">Этот режим включает все забавные баги, допущенные при разработке.</p>
+    <div class="confirm-buttons">
+      <button class="pause-btn danger" id="confirm-funmode-yes" disabled data-i18n="confirm.funmode_yes">Да, хочу страдать (5)</button>
+      <button class="pause-btn" id="confirm-funmode-no" data-i18n="confirm.funmode_no">Нет, я нормальный</button>
     </div>
   </div>
 </div>

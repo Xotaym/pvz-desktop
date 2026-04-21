@@ -139,7 +139,7 @@ function startWave(waveIndex) {
   cfg.zombies.forEach(({ type, row, delay }) => {
     function trySpawn() {
       if (S.gameOver) return;
-      if (S.paused) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
+      if (S.paused && !Engine.State.funMode) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
       Engine.spawnZombie(type, row);
       currentWaveZombiesSpawned++;
     }
@@ -734,7 +734,7 @@ function startCustomWaveStep(index) {
     const r = (row >= 1 ? row - 1 : row);
     function trySpawn() {
       if (S.gameOver || !S._customWave) return;
-      if (S.paused) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
+      if (S.paused && !Engine.State.funMode) { waveTimeouts.push(setTimeout(trySpawn, 500)); return; }
       Engine.spawnZombie(type, Math.max(0, Math.min(4, r)));
       currentWaveZombiesSpawned++;
     }

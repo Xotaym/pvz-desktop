@@ -32,7 +32,8 @@ const SFX = {
   },
 
   applyVolume() {
-    document.querySelectorAll('audio').forEach(el => { el.volume = this._volume; });
+    var v = Math.max(0, Math.min(1, this._volume));
+    document.querySelectorAll('audio').forEach(el => { el.volume = v; });
   },
 
   loadSettings() {
@@ -110,6 +111,8 @@ const PLANT_DISPLAY = [
   { key: 'peashooter',         name: 'горохострел.png',            cost: 75,  file: 'горохострел.png' },
   { key: 'folder_magnet',      name: 'папка-магнит.png',           cost: 75,  file: 'папка-магнит.png' },
   { key: 'siamese_peashooter', name: 'сиам-горохострел.png',       cost: 125, file: 'сиамский-горохострел.png' },
+  { key: 'double_peashooter',  name: 'дв-горохострел.png',          cost: 125, file: 'двойной-горохострел.png' },
+  { key: 'snow_peashooter',   name: 'запретострел.png',            cost: 100, file: 'запретострел.png' },
   { key: 'xsas_mushroom',      name: 'xsas-гриб.png',             cost: 150, file: 'xsas-гриб.png' },
   { key: 'sun_mushroom',       name: 'солнце-гриб.png',           cost: 25,  file: 'солнце-гриб.png', nightOnly: true },
   { key: 'unarchiver',         name: 'разархиватор.png',          cost: 50,  file: 'разархиватор.png', isItem: true },
@@ -117,6 +120,8 @@ const PLANT_DISPLAY = [
   { key: 'daisy',             name: 'ромашка.jpg',               cost: 75,  file: 'ромашка.jpg' },
   { key: 'cherry',            name: 'вишня.webp',                cost: 80,  file: 'вишня.webp' },
   { key: 'avast_nut',         name: 'авасторех.jpg',             cost: 100, file: 'авасторех.jpg' },
+  { key: 'logic_mine',       name: 'мина.png',                  cost: 25,  file: 'мина.png' },
+  { key: 'torrent_lantern', name: 'торент-фонарь.png',         cost: 75,  file: 'торент-фонарь.png' },
   { key: 'basket_chomper',   name: 'корзинокусалка.png',        cost: 75,  file: 'корзинокусалка.png' },
 ];
 
@@ -245,6 +250,7 @@ function cancelFileDrag() {
 function showSysFolder() {
   const S = Engine.State;
   if (S._sysFolder) return;
+  document.querySelectorAll('.sys-folder').forEach(el => el.remove());
 
   const hud = document.getElementById('hud-top');
   const folder = document.createElement('div');
@@ -342,6 +348,7 @@ function clearPlantDragState() {
   plantDragState.velocityX = 0;
   Engine.State.selectedPlant = null;
   Engine.State._freePlant = null;
+  Engine.State._freePlantSource = null;
   document.body.classList.remove('plant-dragging');
   document.getElementById('grid-container')?.classList.remove('dragging-grid');
   document.querySelectorAll('.plant-card').forEach(card => card.classList.remove('selected', 'dragging'));
@@ -350,8 +357,16 @@ function clearPlantDragState() {
 
 function finishPlantDrag(clientX, clientY) {
   const key = plantDragState.key;
+  const wasFree = Engine.State._freePlant === key;
+  const freeSource = Engine.State._freePlantSource;
   const cell = Engine.pixelToCell(clientX, clientY);
-  if (cell) Engine.tryPlacePlant(key, cell.col, cell.row);
+  const placed = cell ? Engine.tryPlacePlant(key, cell.col, cell.row) : false;
+  if (!placed && wasFree && freeSource) {
+    var src = Engine.State.plants[freeSource.row]?.[freeSource.col];
+    if (src && src.type === 'daisy') {
+      Engine.spawnDaisyPlantDrop(freeSource, key);
+    }
+  }
   clearPlantDragState();
 }
 
@@ -376,12 +391,15 @@ function startPlantDrag(key, event) {
   updatePlantDrag(event.clientX, event.clientY);
 }
 
-function startFreePlantDrag(key, event) {
+function startFreePlantDrag(key, event, source) {
   const cfg = Engine.PLANTS[key];
   if (!cfg || Engine.State.paused || Engine.State.gameOver) return;
 
   cancelPlantDrag();
   bindPlantDragHandlers();
+
+  Engine.State._freePlant = key;
+  Engine.State._freePlantSource = source || null;
 
   plantDragState.active = true;
   plantDragState.key = key;
@@ -398,7 +416,16 @@ function startFreePlantDrag(key, event) {
 }
 
 function cancelPlantDrag() {
+  var key = plantDragState.key;
+  var wasFree = key && Engine.State._freePlant === key;
+  var freeSource = Engine.State._freePlantSource;
   clearPlantDragState();
+  if (wasFree && freeSource) {
+    var src = Engine.State.plants[freeSource.row]?.[freeSource.col];
+    if (src && src.type === 'daisy') {
+      Engine.spawnDaisyPlantDrop(freeSource, key);
+    }
+  }
 }
 
 function buildPlantBar() {
@@ -417,7 +444,7 @@ function buildPlantBar() {
     card.title = `${Lang.t('plant.name.' + plant.key)} (${plant.cost} ☀)`;
 
     const img = document.createElement('img');
-    img.src = `static/img/plants/${plant.file}`;
+    img.src = `static/img/${plant.imgFolder || 'plants'}/${plant.file}`;
     img.alt = plant.file;
     img.onerror = () => { img.style.display='none'; card.innerHTML += `<span style="font-size:24px">${plant.key==='sunflower'?'🌻':'🌿'}</span>`; };
 
@@ -463,6 +490,15 @@ function updateSun() {
 function updateWave() {
   const el = document.getElementById('wave-num');
   if (el) el.textContent = Engine.State.wave;
+}
+
+function updateModeIndicators() {
+  var el = document.getElementById('mode-indicators');
+  if (!el) return;
+  var parts = [];
+  if (localStorage.getItem('pvz_devmode') === 'true') parts.push('DEV');
+  if (Engine.State.funMode) parts.push('FUN');
+  el.textContent = parts.length ? ' [' + parts.join(' | ') + ']' : '';
 }
 
 function initPauseMenu() {
@@ -546,6 +582,9 @@ function resetGameState() {
   S._sysFolder = null;
   S._magnetBlocked = {};
   S._zombieCopyCount = 0;
+  S._torrentPairId = 0;
+  S._torrentSlots = [];
+  S._torrentBatchCleanup = false;
 
   cancelFileDrag();
   document.querySelector('.sys-folder')?.remove();
@@ -704,6 +743,7 @@ function initSettings() {
     localStorage.setItem('pvz_devmode', String(on));
     if (!on) document.getElementById('dev-panel')?.classList.add('hidden');
     updateClearLogsVisibility();
+    updateModeIndicators();
   }
 
   devCb.addEventListener('change', () => {
@@ -743,6 +783,65 @@ function initSettings() {
     if (e.target === devModal) {
       if (devCooldownTimer) { clearInterval(devCooldownTimer); devCooldownTimer = null; }
       devModal.classList.add('hidden');
+    }
+  });
+
+  const funCb = document.getElementById('settings-funmode-cb');
+  const savedFun = localStorage.getItem('pvz_funmode') === 'true';
+  funCb.checked = savedFun;
+  Engine.State.funMode = savedFun;
+  funCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = savedFun ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+
+  const funModal = document.getElementById('confirm-funmode-modal');
+  const funYesBtn = document.getElementById('confirm-funmode-yes');
+  const funNoBtn = document.getElementById('confirm-funmode-no');
+  let funCooldownTimer = null;
+
+  function applyFunMode(on) {
+    funCb.checked = on;
+    funCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = on ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+    localStorage.setItem('pvz_funmode', String(on));
+    Engine.State.funMode = on;
+    updateModeIndicators();
+  }
+
+  funCb.addEventListener('change', () => {
+    if (funCb.checked) {
+      funCb.checked = false;
+      funModal.classList.remove('hidden');
+      funYesBtn.disabled = true;
+      let sec = 5;
+      funYesBtn.textContent = Lang.t('confirm.funmode_yes', sec);
+      if (funCooldownTimer) clearInterval(funCooldownTimer);
+      funCooldownTimer = setInterval(() => {
+        sec--;
+        if (sec <= 0) {
+          clearInterval(funCooldownTimer);
+          funCooldownTimer = null;
+          funYesBtn.disabled = false;
+          funYesBtn.textContent = Lang.t('confirm.funmode_yes_ready');
+        } else {
+          funYesBtn.textContent = Lang.t('confirm.funmode_yes', sec);
+        }
+      }, 1000);
+    } else {
+      applyFunMode(false);
+    }
+  });
+
+  funYesBtn.addEventListener('click', () => {
+    if (funCooldownTimer) { clearInterval(funCooldownTimer); funCooldownTimer = null; }
+    funModal.classList.add('hidden');
+    applyFunMode(true);
+  });
+  funNoBtn.addEventListener('click', () => {
+    if (funCooldownTimer) { clearInterval(funCooldownTimer); funCooldownTimer = null; }
+    funModal.classList.add('hidden');
+  });
+  funModal.addEventListener('click', (e) => {
+    if (e.target === funModal) {
+      if (funCooldownTimer) { clearInterval(funCooldownTimer); funCooldownTimer = null; }
+      funModal.classList.add('hidden');
     }
   });
 
@@ -791,6 +890,8 @@ function initSettings() {
   confirmModal.addEventListener('click', (e) => {
     if (e.target === confirmModal) confirmModal.classList.add('hidden');
   });
+
+  updateModeIndicators();
 }
 
 function updateGamemodeLabels(el) {
@@ -815,6 +916,7 @@ window.UI = {
   buildPlantBar,
   updateSun,
   updateWave,
+  updateModeIndicators,
   updatePlantBar,
   initPauseMenu,
   initSettings,
@@ -835,4 +937,20 @@ window.UI = {
   startFreePlantDrag,
   showSysFolder,
   hideSysFolder,
+  syncVolumeSlider,
 };
+
+function syncVolumeSlider() {
+  var slider = document.getElementById('settings-volume');
+  var label = document.getElementById('settings-volume-val');
+  if (!slider || !label) return;
+  var pct = Math.round(SFX._volume * 100);
+  slider.value = Math.max(0, Math.min(100, pct));
+  slider.style.overflow = pct > 100 ? 'visible' : '';
+  label.textContent = pct + '%';
+  if (pct > 100) {
+    label.style.color = '#ff4444';
+  } else {
+    label.style.color = '';
+  }
+}
