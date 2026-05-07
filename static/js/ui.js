@@ -6,34 +6,133 @@ const SFX = {
   _musicMuted: false,
   _musicIds: ['snd-menu'],
 
+  _ctx: null,
+  _masterGain: null,
+  _musicGain: null,
+  _sfxGain: null,
+  _buffers: new Map(),
+  _active: new Map(),
+  _suspended: false,
+
   _isMusic(id) { return this._musicIds.includes(id); },
+
+  _ensureCtx() {
+    if (this._ctx) return this._ctx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    try {
+      this._ctx = new Ctx();
+    } catch (e) {
+      return null;
+    }
+    this._masterGain = this._ctx.createGain();
+    this._masterGain.gain.value = this._volume;
+    this._masterGain.connect(this._ctx.destination);
+    this._musicGain = this._ctx.createGain();
+    this._musicGain.gain.value = this._musicMuted ? 0 : 1;
+    this._musicGain.connect(this._masterGain);
+    this._sfxGain = this._ctx.createGain();
+    this._sfxGain.gain.value = this._sfxMuted ? 0 : 1;
+    this._sfxGain.connect(this._masterGain);
+    return this._ctx;
+  },
+
+  async _loadBuffer(id) {
+    const ctx = this._ensureCtx();
+    if (!ctx) return null;
+    if (this._buffers.has(id)) return this._buffers.get(id);
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const url = el.src || (el.querySelector('source') && el.querySelector('source').src);
+    if (!url) return null;
+    try {
+      const res = await fetch(url);
+      const arr = await res.arrayBuffer();
+      const buf = await new Promise((resolve, reject) => {
+        ctx.decodeAudioData(arr, resolve, reject);
+      });
+      this._buffers.set(id, buf);
+      return buf;
+    } catch (e) {
+      if (window.GameLog) GameLog.log('SFX', 'decode failed for ' + id + ': ' + (e && e.message || e));
+      return null;
+    }
+  },
+
+  init() {
+    this._ensureCtx();
+    const audios = document.querySelectorAll('audio[id^="snd-"]');
+    audios.forEach(a => { this._loadBuffer(a.id); });
+  },
 
   play(id) {
     if (this._isMusic(id) && this._musicMuted) return;
     if (!this._isMusic(id) && this._sfxMuted) return;
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.pause();
-    el.currentTime = 0;
-    el.volume = this._volume;
-    el.play().catch(() => {});
+    const ctx = this._ensureCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      this._suspended = false;
+      ctx.resume().catch(() => {});
+    }
+
+    const buf = this._buffers.get(id);
+    if (!buf) {
+      this._loadBuffer(id).then(b => { if (b && !this._suspended) this.play(id); });
+      return;
+    }
+
+    if (this._isMusic(id)) this.stop(id);
+
+    const source = ctx.createBufferSource();
+    source.buffer = buf;
+    source.loop = this._isMusic(id);
+    source.connect(this._isMusic(id) ? this._musicGain : this._sfxGain);
+    try { source.start(0); } catch (e) { return; }
+
+    let set = this._active.get(id);
+    if (!set) { set = new Set(); this._active.set(id, set); }
+    set.add(source);
+    source.onended = () => { set.delete(source); };
   },
 
   stop(id) {
-    const el = document.getElementById(id);
-    if (el) { el.pause(); el.currentTime = 0; }
+    const set = this._active.get(id);
+    if (!set) return;
+    for (const s of set) {
+      try { s.stop(); } catch (e) {}
+    }
+    set.clear();
   },
 
   stopAll() {
-    document.querySelectorAll('audio').forEach(el => {
-      el.pause();
-      el.currentTime = 0;
-    });
+    for (const id of Array.from(this._active.keys())) this.stop(id);
+  },
+
+  suspend() {
+    if (this._suspended) return;
+    this._suspended = true;
+    if (this._ctx && this._ctx.state === 'running') {
+      this._ctx.suspend().catch(() => {});
+    }
+  },
+
+  resume() {
+    if (!this._suspended) return;
+    this._suspended = false;
+    if (this._ctx && this._ctx.state === 'suspended') {
+      this._ctx.resume().catch(() => {});
+    }
   },
 
   applyVolume() {
-    var v = Math.max(0, Math.min(1, this._volume));
-    document.querySelectorAll('audio').forEach(el => { el.volume = v; });
+    const v = Math.max(0, Math.min(1, this._volume));
+    this._volume = v;
+    if (this._masterGain) this._masterGain.gain.value = v;
+  },
+
+  _applyMutes() {
+    if (this._musicGain) this._musicGain.gain.value = this._musicMuted ? 0 : 1;
+    if (this._sfxGain) this._sfxGain.gain.value = this._sfxMuted ? 0 : 1;
   },
 
   loadSettings() {
@@ -44,7 +143,9 @@ const SFX = {
       if (typeof s.volume === 'number') this._volume = Math.max(0, Math.min(1, s.volume));
       if (typeof s.sfxMuted === 'boolean') this._sfxMuted = s.sfxMuted;
       if (typeof s.musicMuted === 'boolean') this._musicMuted = s.musicMuted;
-    } catch(e) {}
+    } catch (e) {}
+    this.applyVolume();
+    this._applyMutes();
   },
 
   saveSettings() {
@@ -53,6 +154,7 @@ const SFX = {
       sfxMuted: this._sfxMuted,
       musicMuted: this._musicMuted,
     }));
+    this._applyMutes();
   }
 };
 window.SFX = SFX;
@@ -68,7 +170,7 @@ function initCursik() {
   ck.el.style.left = (ck.x - 20) + "px";
   ck.el.style.top  = (ck.y - 20) + "px";
 
-  document.addEventListener('mousemove', (e) => {
+  document.addEventListener('pointermove', (e) => {
     if (Engine.State.selectedPlant && Engine.State.started) {
       highlightCell(e.clientX, e.clientY);
     }
@@ -107,22 +209,22 @@ function highlightCell(mx, my) {
 }
 
 const PLANT_DISPLAY = [
-  { key: 'sunflower',          name: 'подсолнух.png',              cost: 50,  file: 'подсолнух.png' },
-  { key: 'peashooter',         name: 'горохострел.png',            cost: 75,  file: 'горохострел.png' },
-  { key: 'folder_magnet',      name: 'папка-магнит.png',           cost: 75,  file: 'папка-магнит.png' },
-  { key: 'siamese_peashooter', name: 'сиам-горохострел.png',       cost: 125, file: 'сиамский-горохострел.png' },
-  { key: 'double_peashooter',  name: 'дв-горохострел.png',          cost: 125, file: 'двойной-горохострел.png' },
-  { key: 'snow_peashooter',   name: 'запретострел.png',            cost: 100, file: 'запретострел.png' },
-  { key: 'xsas_mushroom',      name: 'xsas-гриб.png',             cost: 150, file: 'xsas-гриб.png' },
-  { key: 'sun_mushroom',       name: 'солнце-гриб.png',           cost: 25,  file: 'солнце-гриб.png', nightOnly: true },
-  { key: 'unarchiver',         name: 'разархиватор.png',          cost: 50,  file: 'разархиватор.png', isItem: true },
-  { key: 'kaspersky_bean',    name: 'касп-боб.png',              cost: 50,  file: 'касперский-боб.png', isItem: true },
-  { key: 'daisy',             name: 'ромашка.jpg',               cost: 75,  file: 'ромашка.jpg' },
-  { key: 'cherry',            name: 'вишня.webp',                cost: 80,  file: 'вишня.webp' },
-  { key: 'avast_nut',         name: 'авасторех.jpg',             cost: 100, file: 'авасторех.jpg' },
-  { key: 'logic_mine',       name: 'мина.png',                  cost: 25,  file: 'мина.png' },
-  { key: 'torrent_lantern', name: 'торент-фонарь.png',         cost: 75,  file: 'торент-фонарь.png' },
-  { key: 'basket_chomper',   name: 'корзинокусалка.png',        cost: 75,  file: 'корзинокусалка.png' },
+  { key: 'sunflower',          name: 'sunflower.png',              cost: 50,  file: 'sunflower.png' },
+  { key: 'peashooter',         name: 'peashooter.png',             cost: 75,  file: 'peashooter.png' },
+  { key: 'folder_magnet',      name: 'folder-magnet.png',          cost: 75,  file: 'folder-magnet.png' },
+  { key: 'siamese_peashooter', name: 'siamese-peashooter.png',     cost: 125, file: 'siamese-peashooter.png' },
+  { key: 'double_peashooter',  name: 'double-peashooter.jpg',      cost: 125, file: 'double-peashooter.jpg' },
+  { key: 'snow_peashooter',   name: 'snow-peashooter.jpg',        cost: 100, file: 'snow-peashooter.jpg' },
+  { key: 'xsas_mushroom',      name: 'xsas-mushroom.png',         cost: 150, file: 'xsas-mushroom.png' },
+  { key: 'sun_mushroom',       name: 'sun-mushroom.png',          cost: 25,  file: 'sun-mushroom.png', nightOnly: true },
+  { key: 'unarchiver',         name: 'unarchiver.png',            cost: 50,  file: 'unarchiver.png', isItem: true },
+  { key: 'kaspersky_bean',    name: 'kaspersky-bean.png',         cost: 50,  file: 'kaspersky-bean.png', isItem: true },
+  { key: 'daisy',             name: 'daisy.jpg',                  cost: 75,  file: 'daisy.jpg' },
+  { key: 'cherry',            name: 'cherry.webp',                cost: 80,  file: 'cherry.webp' },
+  { key: 'avast_nut',         name: 'avast-nut.jpg',              cost: 100, file: 'avast-nut.jpg' },
+  { key: 'logic_mine',       name: 'mine.jpg',                   cost: 25,  file: 'mine.jpg' },
+  { key: 'torrent_lantern', name: 'torrent-lantern.jpg',        cost: 75,  file: 'torrent-lantern.jpg' },
+  { key: 'basket_chomper',   name: 'basket-chomper.jpg',         cost: 75,  file: 'basket-chomper.jpg' },
 ];
 
 function bindPlantDragHandlers() {
@@ -182,7 +284,7 @@ function startFileDrag(file, event) {
   const preview = document.createElement('div');
   preview.className = 'file-drag-preview';
   const img = document.createElement('img');
-  img.src = 'static/img/other/sys.png';
+  img.src = file.kind === 'table' ? 'static/img/other/table.png' : 'static/img/other/sys.png';
   img.draggable = false;
   preview.appendChild(img);
   document.body.appendChild(preview);
@@ -190,7 +292,7 @@ function startFileDrag(file, event) {
   preview.style.top = event.clientY + 'px';
   fileDragState.previewEl = preview;
 
-  showSysFolder();
+  showSysFolder(file.kind === 'table' ? 'table' : 'sys');
 }
 
 function updateFileDrag(clientX, clientY) {
@@ -223,7 +325,7 @@ function finishFileDrag(clientX, clientY) {
     Engine.spawnParticles(
       S._sysFolder.el.getBoundingClientRect().left + 30,
       S._sysFolder.el.getBoundingClientRect().top + 30,
-      '#2ecc71', 12
+      file.kind === 'table' ? '#1a7a3a' : '#2ecc71', 12
     );
     SFX.play('snd-sun');
     S._magnetBlocked = {};
@@ -247,27 +349,29 @@ function cancelFileDrag() {
   fileDragState = { active: false, fileObj: null, previewEl: null };
 }
 
-function showSysFolder() {
+function showSysFolder(kind) {
   const S = Engine.State;
   if (S._sysFolder) return;
   document.querySelectorAll('.sys-folder').forEach(el => el.remove());
 
-  const hud = document.getElementById('hud-top');
-  const folder = document.createElement('div');
-  folder.className = 'sys-folder';
+  var isMobile = window.matchMedia('(max-width: 767px), (pointer: coarse) and (max-height: 900px)').matches;
+  var parent = isMobile ? document.getElementById('screen-game') : document.getElementById('hud-top');
+  var folder = document.createElement('div');
+  var folderKind = kind === 'table' ? 'table' : 'sys';
+  folder.className = 'sys-folder' + (isMobile ? ' sys-folder-mobile' : '') + ' sys-folder-' + folderKind;
 
   const img = document.createElement('img');
-  img.src = 'static/img/ui/папка.png';
+  img.src = 'static/img/ui/folder.png';
   img.draggable = false;
   img.onerror = () => { img.remove(); folder.insertAdjacentHTML('afterbegin', '<span style="font-size:28px">📁</span>'); };
   folder.appendChild(img);
 
   const label = document.createElement('span');
-  label.textContent = 'system32';
+  label.textContent = folderKind === 'table' ? 'Работа-2026' : 'system32';
   folder.appendChild(label);
 
-  hud.appendChild(folder);
-  S._sysFolder = { el: folder };
+  parent.appendChild(folder);
+  S._sysFolder = { el: folder, kind: folderKind };
 }
 
 function hideSysFolder() {
@@ -334,6 +438,8 @@ function updatePlantDrag(clientX, clientY) {
   plantDragState.lastX = clientX;
   plantDragState.lastY = clientY;
   plantDragState.lastTime = now;
+  var cell = Engine.pixelToCell(clientX, clientY);
+  plantDragState.previewEl.classList.toggle('out-of-bounds', !cell);
   highlightCell(clientX, clientY);
 }
 
@@ -350,6 +456,7 @@ function clearPlantDragState() {
   Engine.State._freePlant = null;
   Engine.State._freePlantSource = null;
   document.body.classList.remove('plant-dragging');
+  document.body.style.touchAction = '';
   document.getElementById('grid-container')?.classList.remove('dragging-grid');
   document.querySelectorAll('.plant-card').forEach(card => card.classList.remove('selected', 'dragging'));
   clearHighlightedCell();
@@ -385,6 +492,7 @@ function startPlantDrag(key, event) {
   plantDragState.lastTime = performance.now();
   plantDragState.velocityX = 0;
   document.body.classList.add('plant-dragging');
+  document.body.style.touchAction = 'none';
   document.getElementById('grid-container')?.classList.add('dragging-grid');
 
   setPlantSelection(key);
@@ -409,6 +517,7 @@ function startFreePlantDrag(key, event, source) {
   plantDragState.lastTime = performance.now();
   plantDragState.velocityX = 0;
   document.body.classList.add('plant-dragging');
+  document.body.style.touchAction = 'none';
   document.getElementById('grid-container')?.classList.add('dragging-grid');
 
   Engine.State.selectedPlant = key;
@@ -428,7 +537,23 @@ function cancelPlantDrag() {
   }
 }
 
+function ensureMobilePlantBar() {
+  var isMobile = window.matchMedia('(max-width: 767px), (pointer: coarse) and (max-height: 900px)').matches;
+  var bar = document.getElementById('plant-bar');
+  var game = document.getElementById('screen-game');
+  if (!bar || !game) return;
+  if (isMobile && bar.parentElement.id === 'hud-top') {
+    game.appendChild(bar);
+  } else if (!isMobile && bar.parentElement.id !== 'hud-top') {
+    var hud = document.getElementById('hud-top');
+    var waveInfo = document.getElementById('wave-info');
+    if (hud && waveInfo) hud.insertBefore(bar, waveInfo);
+    else if (hud) hud.appendChild(bar);
+  }
+}
+
 function buildPlantBar() {
+  ensureMobilePlantBar();
   const bar = document.getElementById('plant-bar');
   bar.innerHTML = '';
   bindPlantDragHandlers();
@@ -462,9 +587,58 @@ function buildPlantBar() {
 
     card.addEventListener('pointerdown', (e) => {
       if (Engine.State.paused || Engine.State.gameOver) return;
-      e.preventDefault();
-      card.classList.add('dragging');
-      startPlantDrag(plant.key, e);
+      if (e.pointerType !== 'touch') {
+        e.preventDefault();
+        card.classList.add('dragging');
+        startPlantDrag(plant.key, e);
+        return;
+      }
+
+      const startX = e.clientX, startY = e.clientY;
+      let armed = false;
+      let cancelled = false;
+
+      const arm = (ev) => {
+        if (armed || cancelled) return;
+        armed = true;
+        card.classList.add('dragging');
+        try { card.releasePointerCapture && card.releasePointerCapture(ev.pointerId); } catch (_) {}
+        startPlantDrag(plant.key, ev);
+      };
+
+      const onMove = (ev) => {
+        if (armed || cancelled) return;
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+          cleanup();
+          return;
+        }
+        if (Math.abs(dy) > 8 || Math.abs(dx) > 24) {
+          arm(ev);
+        }
+      };
+      const onEnd = (ev) => {
+        if (!armed) {
+          cleanup();
+        }
+      };
+      const holdTimer = setTimeout(() => {
+        if (!cancelled && !armed) {
+          const fakeEvt = { clientX: startX, clientY: startY, pointerId: e.pointerId, pointerType: 'touch', preventDefault: () => {} };
+          arm(fakeEvt);
+        }
+      }, 220);
+      const cleanup = () => {
+        cancelled = true;
+        clearTimeout(holdTimer);
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onEnd);
+        document.removeEventListener('pointercancel', onEnd);
+      };
+      document.addEventListener('pointermove', onMove, { passive: true });
+      document.addEventListener('pointerup', onEnd, { passive: true });
+      document.addEventListener('pointercancel', onEnd, { passive: true });
     });
   });
 }
@@ -495,10 +669,22 @@ function updateWave() {
 function updateModeIndicators() {
   var el = document.getElementById('mode-indicators');
   if (!el) return;
-  var parts = [];
-  if (localStorage.getItem('pvz_devmode') === 'true') parts.push('DEV');
-  if (Engine.State.funMode) parts.push('FUN');
-  el.textContent = parts.length ? ' [' + parts.join(' | ') + ']' : '';
+  el.innerHTML = '';
+  if (localStorage.getItem('pvz_devmode') === 'true') {
+    var badge = document.createElement('span');
+    badge.className = 'dev-badge';
+    badge.textContent = 'DEV';
+    badge.addEventListener('click', function() {
+      var panel = document.getElementById('dev-panel');
+      if (panel) panel.classList.toggle('hidden');
+    });
+    el.appendChild(document.createTextNode(' ['));
+    el.appendChild(badge);
+    if (Engine.State.funMode) el.appendChild(document.createTextNode(' | FUN'));
+    el.appendChild(document.createTextNode(']'));
+  } else if (Engine.State.funMode) {
+    el.textContent = ' [FUN]';
+  }
 }
 
 function initPauseMenu() {
@@ -514,6 +700,20 @@ function initPauseMenu() {
     resumeGame();
     returnToMenu();
   });
+  document.getElementById('pause-exit').addEventListener('click', () => {
+    try { fetch('/api/exit', { method: 'POST' }); } catch (e) {}
+    try { window.close(); } catch (e) {}
+    setTimeout(() => { window.location.href = 'about:blank'; }, 400);
+  });
+
+  var mobilePauseBtn = document.getElementById('mobile-pause-btn');
+  if (mobilePauseBtn) {
+    mobilePauseBtn.addEventListener('click', () => {
+      if (Engine.State.started && !Engine.State.gameOver) {
+        Engine.State.paused ? resumeGame() : pauseGame();
+      }
+    });
+  }
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -526,6 +726,25 @@ function initPauseMenu() {
       }
     }
   });
+
+  const onHide = () => {
+    if (Engine.State.started && !Engine.State.gameOver && !Engine.State.paused) {
+      pauseGame();
+    }
+    SFX.suspend();
+  };
+  const onShow = () => {
+    if (Engine.State.started && Engine.State.paused) return;
+    SFX.resume();
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) onHide();
+    else onShow();
+  });
+  window.addEventListener('blur', onHide);
+  window.addEventListener('focus', onShow);
+  window.addEventListener('pagehide', onHide);
 }
 
 function pauseGame() {
@@ -533,13 +752,14 @@ function pauseGame() {
   Engine.dismissChomperMenu();
   GameLog.log('GAME', 'Game paused');
   document.getElementById('pause-menu').classList.remove('hidden');
-  SFX.stop('snd-menu');
+  SFX.suspend();
 }
 
 function resumeGame() {
   Engine.State.paused = false;
   GameLog.log('GAME', 'Game resumed');
   document.getElementById('pause-menu').classList.add('hidden');
+  SFX.resume();
 }
 
 function returnToMenu() {
@@ -555,6 +775,13 @@ function returnToMenu() {
 
   SFX.stopAll();
   resetGameState();
+
+  document.querySelectorAll('.wave-banner').forEach(el => el.remove());
+  const bsod = document.getElementById('screen-end');
+  if (bsod) {
+    bsod.style.display = 'none';
+    bsod.classList.remove('active', 'visible');
+  }
 
   hideScreen('game');
   showScreen('menu');
@@ -585,6 +812,7 @@ function resetGameState() {
   S._torrentPairId = 0;
   S._torrentSlots = [];
   S._torrentBatchCleanup = false;
+  S._xsasHistory = [];
 
   cancelFileDrag();
   document.querySelector('.sys-folder')?.remove();
@@ -623,7 +851,8 @@ async function loadDesktopData() {
   if (shot) shot.style.display = 'none';
 
   if (!window._desktopWallpaper && window._bootData && window._bootData.wallpaper) {
-    window._desktopWallpaper = 'data:image/png;base64,' + window._bootData.wallpaper;
+    const mime = window._bootData.wallpaper_mime || 'image/png';
+    window._desktopWallpaper = `data:${mime};base64,` + window._bootData.wallpaper;
   }
 
   if (window._desktopWallpaper) {
@@ -640,10 +869,12 @@ async function loadDesktopData() {
     const data = await res.json();
 
     if (data.wallpaper) {
-      desktop.style.backgroundImage = 'url(data:image/png;base64,' + data.wallpaper + ')';
+      const mime = data.wallpaper_mime || 'image/png';
+      const url = `data:${mime};base64,` + data.wallpaper;
+      desktop.style.backgroundImage = `url(${url})`;
       desktop.style.backgroundSize = 'cover';
       desktop.style.backgroundPosition = 'center';
-      window._desktopWallpaper = 'data:image/png;base64,' + data.wallpaper;
+      window._desktopWallpaper = url;
     }
 
     const layer = document.getElementById('desktop-icons-layer');
@@ -704,6 +935,19 @@ function initSettings() {
     SFX._sfxMuted = !sfxCb.checked;
     sfxCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = sfxCb.checked ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
     SFX.saveSettings();
+  });
+
+  const gfxCb = document.getElementById('settings-gfx-cb');
+  const gfxLabel = document.getElementById('settings-gfx-label');
+  function refreshGfxLabel() {
+    const isHigh = !!(window.Graphics && !window.Graphics.isLow());
+    gfxCb.checked = isHigh;
+    gfxLabel.textContent = isHigh ? Lang.t('settings.gfx.high') : Lang.t('settings.gfx.low');
+  }
+  refreshGfxLabel();
+  gfxCb.addEventListener('change', () => {
+    if (window.Graphics) window.Graphics.set(gfxCb.checked ? 'high' : 'low');
+    refreshGfxLabel();
   });
 
   const gamemodeEl = document.getElementById('settings-gamemode');
@@ -845,6 +1089,22 @@ function initSettings() {
     }
   });
 
+  const openLogsBtn = document.getElementById('settings-open-logs');
+  if (openLogsBtn) {
+    openLogsBtn.addEventListener('click', async () => {
+      try {
+        if (window.GameLog && GameLog.flush) { try { await GameLog.flush(); } catch (_) {} }
+        const res = await fetch('/api/logs/open', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!data.ok) {
+          alert((Lang.t('settings.open_logs.error') || 'Failed to open logs') + (data.error ? ': ' + data.error : ''));
+        }
+      } catch (e) {
+        alert((Lang.t('settings.open_logs.error') || 'Failed to open logs') + ': ' + e.message);
+      }
+    });
+  }
+
   const confirmLogsModal = document.getElementById('confirm-logs-modal');
   clearLogsBtn.addEventListener('click', () => {
     confirmLogsModal.classList.remove('hidden');
@@ -911,6 +1171,23 @@ function closeSettings() {
   settingsOpenedFrom = null;
 }
 
+function refreshToggleLabels() {
+  var musicCb = document.getElementById('settings-music-cb');
+  if (musicCb) musicCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = musicCb.checked ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+  var sfxCb = document.getElementById('settings-sfx-cb');
+  if (sfxCb) sfxCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = sfxCb.checked ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+  var devCb = document.getElementById('settings-devmode-cb');
+  if (devCb) devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = devCb.checked ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+  var funCb = document.getElementById('settings-funmode-cb');
+  if (funCb) funCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = funCb.checked ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+  var gfxLabel = document.getElementById('settings-gfx-label');
+  var gfxCb = document.getElementById('settings-gfx-cb');
+  if (gfxLabel && gfxCb) {
+    var isHigh = !!(window.Graphics && !window.Graphics.isLow());
+    gfxLabel.textContent = isHigh ? Lang.t('settings.gfx.high') : Lang.t('settings.gfx.low');
+  }
+}
+
 window.UI = {
   initCursik,
   buildPlantBar,
@@ -938,6 +1215,8 @@ window.UI = {
   showSysFolder,
   hideSysFolder,
   syncVolumeSlider,
+  refreshToggleLabels,
+  ensureMobilePlantBar,
 };
 
 function syncVolumeSlider() {

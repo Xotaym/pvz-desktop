@@ -4,6 +4,18 @@ async function init() {
   GameLog.init();
   GameLog.log('SYSTEM', 'Game init started');
   document.addEventListener('dragstart', (e) => e.preventDefault());
+  let _resizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (_resizeTimer) clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      _resizeTimer = null;
+      if (Engine.State.started && !Engine.State.gameOver) {
+        Engine.updateScale();
+        Engine.buildGrid();
+      }
+      UI.ensureMobilePlantBar();
+    }, 120);
+  });
 
   const bootDataPromise = Boot.preloadBootData();
 
@@ -11,6 +23,13 @@ async function init() {
   UI.initCursik();
   UI.initPauseMenu();
   UI.initSettings();
+  if (window.SFX && SFX.init) {
+    try { SFX.loadSettings(); SFX.init(); } catch (e) {}
+  }
+  if (window.Updater && Updater.init) {
+    Updater.init();
+    setTimeout(() => { try { Updater.check(true); } catch (e) { console.warn(e); } }, 2500);
+  }
   Lang.applyDOM();
 
   document.getElementById('btn-play').addEventListener('click', onPlayClicked);
@@ -21,6 +40,22 @@ async function init() {
   document.getElementById('btn-settings').addEventListener('click', () => {
     UI.openSettings('menu');
   });
+  var btnExit = document.getElementById('btn-exit');
+  var cursikAngry = document.getElementById('menu-cursik-angry');
+  if (btnExit) {
+    btnExit.addEventListener('mouseenter', () => {
+      if (cursikAngry) cursikAngry.classList.add('visible');
+    });
+    btnExit.addEventListener('mouseleave', () => {
+      if (cursikAngry) cursikAngry.classList.remove('visible');
+    });
+    btnExit.addEventListener('click', () => {
+      try { fetch('/api/exit', { method: 'POST' }); } catch (e) {}
+      try { if (window.pywebview && window.pywebview.api && window.pywebview.api.exit) window.pywebview.api.exit(); } catch (e) {}
+      try { window.close(); } catch (e) {}
+      setTimeout(() => { window.location.href = 'about:blank'; }, 400);
+    });
+  }
   document.getElementById('btn-docs-close').addEventListener('click', () => {
     UI.showScreen('menu');
     UI.hideScreen('docs');
@@ -103,10 +138,10 @@ async function startGame() {
   const bgEl = document.getElementById('pvz-bg');
   if (S.nightMode) {
     nightEl.classList.remove('hidden');
-    bgEl.style.backgroundImage = "url('static/img/ui/ночной-фон-игры.png')";
+    bgEl.style.backgroundImage = "url('static/img/ui/night-bg.jpg')";
   } else {
     nightEl.classList.add('hidden');
-    bgEl.style.backgroundImage = "url('static/img/ui/фон-игры.png')";
+    bgEl.style.backgroundImage = "url('static/img/ui/game-bg.png')";
   }
 
   const gameScreen = document.getElementById('screen-game');
@@ -114,6 +149,7 @@ async function startGame() {
   gameScreen.style.opacity = '0';
   gameScreen.style.transition = 'opacity 0.8s';
 
+  Engine.updateScale();
   Engine.buildGrid();
   UI.buildPlantBar();
   UI.updateSun();
@@ -311,6 +347,14 @@ function initDevPanel() {
         if (z.alive) Engine.killZombie(z, true);
       });
     });
+
+    const showIdCb = document.getElementById('dev-show-zombie-id');
+    if (showIdCb) {
+      showIdCb.checked = Engine.isShowZombieIds && Engine.isShowZombieIds();
+      showIdCb.addEventListener('change', () => {
+        if (Engine.setShowZombieIds) Engine.setShowZombieIds(showIdCb.checked);
+      });
+    }
 
     let _cwaveCache = [];
     function loadCwaveList() {
@@ -586,6 +630,22 @@ function executeDevCommand(input) {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+window.addEventListener('error', (e) => {
+  if (window.GameLog) {
+    GameLog.log('JS_ERROR', `${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`);
+    try { GameLog.flush(); } catch (_) {}
+  }
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (window.GameLog) {
+    GameLog.log('JS_PROMISE', String(e.reason && e.reason.message || e.reason));
+    try { GameLog.flush(); } catch (_) {}
+  }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-  init().catch(console.error);
+  init().catch(err => {
+    if (window.GameLog) GameLog.log('JS_ERROR', 'init: ' + (err && err.message || err));
+    console.error(err);
+  });
 });

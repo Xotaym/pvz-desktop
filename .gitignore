@@ -37,3 +37,17 @@ storage/
 # Temp files
 *.tmp
 *.bak
+
+# Buildozer
+buildozer.spec
+.buildozer/
+bin/
+
+# Updater
+.update_tmp/
+.update_backup/
+.update_success
+update.log
+
+# Misc
+30

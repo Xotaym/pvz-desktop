@@ -64,10 +64,12 @@ async function runBootSequence(onComplete) {
   const desktopData = window._bootData || await loadBootData();
 
   if (desktopData && desktopData.wallpaper) {
-    screen.style.backgroundImage = `url(data:image/png;base64,${desktopData.wallpaper})`;
+    const mime = desktopData.wallpaper_mime || 'image/png';
+    const url = `data:${mime};base64,${desktopData.wallpaper}`;
+    screen.style.backgroundImage = `url(${url})`;
     screen.style.backgroundSize = 'cover';
     screen.style.backgroundPosition = 'center';
-    window._desktopWallpaper = 'data:image/png;base64,' + desktopData.wallpaper;
+    window._desktopWallpaper = url;
   }
 
   screen.style.display = 'flex';
@@ -75,13 +77,62 @@ async function runBootSequence(onComplete) {
   screen.style.opacity = '1';
   screen.classList.add('visible');
 
+  const defender = document.querySelector('.boot-defender');
+  const defTitle = document.getElementById('defender-title');
+  const defDesc = document.getElementById('defender-desc');
+  const defStatus = document.getElementById('defender-status');
+  const defAction = document.getElementById('defender-action');
+  const defProgressLabel = document.getElementById('defender-progress-label');
+  const defConfirm = document.getElementById('defender-confirm');
+  const btnYes = document.getElementById('defender-btn-yes');
+  const btnNo = document.getElementById('defender-btn-no');
+
+  const setScanningMode = () => {
+    defTitle.textContent = Lang.t('defender.scan_title');
+    defDesc.textContent = Lang.t('defender.scan_desc');
+    defStatus.textContent = Lang.t('defender.status_scanning');
+    defStatus.className = 'defender-status-scanning';
+    defAction.textContent = Lang.t('defender.action_scanning');
+    defProgressLabel.textContent = Lang.t('defender.progress_scan');
+    barFill.classList.add('scanning');
+    barFill.style.width = '';
+    barFill.style.transition = '';
+    defConfirm.style.display = 'none';
+  };
+  const setThreatMode = (active) => {
+    defTitle.textContent = Lang.t(active ? 'defender.threat_active_title' : 'defender.alert_title');
+    defDesc.textContent = Lang.t(active ? 'defender.threat_active_desc' : 'defender.alert_desc');
+    defStatus.textContent = Lang.t('defender.status');
+    defStatus.className = active ? 'defender-status-warning' : 'defender-status-active';
+    defAction.textContent = Lang.t('defender.action');
+    defProgressLabel.textContent = Lang.t('defender.progress');
+    barFill.classList.remove('scanning');
+    barFill.style.width = '0%';
+    barFill.style.transition = '';
+    defConfirm.style.display = 'block';
+  };
+
+  setScanningMode();
+  defender.style.display = 'block';
+  defender.style.opacity = '0';
+  defender.style.transform = 'translateY(-10px) scale(0.96)';
+  await delay(50);
+  defender.style.transition = 'all 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+  defender.style.opacity = '1';
+  defender.style.transform = 'translateY(0) scale(1)';
+
   await delay(300);
   const sourceIcons = (desktopData && desktopData.icons) || getFakeIcons();
   const visibleIcons = sourceIcons.slice(0, 48);
   const positions = generateIconPositions(visibleIcons.length);
   const iconEls = [];
 
+  const SCAN_TIMEOUT_MS = 6000;
+  const scanStartedAt = performance.now();
+
   for (let i = 0; i < visibleIcons.length; i++) {
+    if (performance.now() - scanStartedAt > SCAN_TIMEOUT_MS) break;
+
     const icon = visibleIcons[i];
     const pos  = positions[i];
 
@@ -113,39 +164,90 @@ async function runBootSequence(onComplete) {
     el.appendChild(label);
     iconsContainer.appendChild(el);
     iconEls.push(el);
+    await delay(40);
   }
 
-  await delay(1500);
+  const elapsed = performance.now() - scanStartedAt;
+  if (elapsed < 1500) await delay(1500 - elapsed);
 
-  const defender = document.querySelector('.boot-defender');
-  defender.style.display = 'block';
-  defender.style.opacity = '0';
-  defender.style.transform = 'scale(0.8) translateY(20px)';
-  await delay(50);
-  defender.style.transition = 'all 0.5s cubic-bezier(0.34,1.56,0.64,1)';
-  defender.style.opacity = '1';
-  defender.style.transform = 'scale(1) translateY(0)';
+  setThreatMode(false);
 
-  await delay(600);
-  barFill.style.width = '100%';
-  await delay(4000);
+  const userChoice = await new Promise(resolve => {
+    const onYes = () => { cleanup(); resolve('yes'); };
+    const onNo = () => { cleanup(); resolve('no'); };
+    function cleanup() {
+      btnYes.removeEventListener('click', onYes);
+      btnNo.removeEventListener('click', onNo);
+    }
+    btnYes.addEventListener('click', onYes);
+    btnNo.addEventListener('click', onNo);
+  });
 
-  SFX.play('snd-delete');
+  if (userChoice === 'no') {
+    defender.style.transition = 'all 0.4s ease';
+    defender.style.opacity = '0';
+    defender.style.transform = 'translateY(-8px) scale(0.96)';
+    await delay(450);
+    defender.style.display = 'none';
+    await delay(1000);
+
+    setThreatMode(true);
+    defender.style.display = 'block';
+    defender.style.opacity = '0';
+    defender.style.transform = 'translateY(-10px) scale(0.96)';
+    await delay(50);
+    defender.style.opacity = '1';
+    defender.style.transform = 'translateY(0) scale(1)';
+
+    await new Promise(resolve => {
+      const onYes = () => { cleanup(); resolve(); };
+      function cleanup() { btnYes.removeEventListener('click', onYes); btnNo.removeEventListener('click', onYes); }
+      btnYes.addEventListener('click', onYes);
+      btnNo.addEventListener('click', onYes);
+    });
+  }
+
+  defConfirm.style.display = 'none';
+  defProgressLabel.textContent = Lang.t('defender.progress');
+  defAction.textContent = Lang.t('defender.action');
+  await delay(400);
+
+  defTitle.textContent = Lang.t('defender.error_title');
+  defDesc.textContent = Lang.t('defender.error_desc');
+  defStatus.textContent = Lang.t('defender.status');
+  defStatus.className = 'defender-status-warning';
+  const alertIcon = document.querySelector('.defender-alert-icon');
+  if (alertIcon) {
+    alertIcon.innerHTML = '<svg viewBox="0 0 24 24" width="48" height="48" fill="#e74c3c">' +
+      '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>';
+  }
+  SFX.play('snd-explosion');
+
+  await delay(2000);
 
   const rows = [...new Set(iconEls.map(el => el.dataset.row))].sort((a, b) => Number(a) - Number(b));
+  const eraseStepMs = window.innerWidth < 900 ? 260 : 320;
+  const totalEraseMs = Math.max(1200, rows.length * eraseStepMs);
+
+  barFill.style.transition = `width ${totalEraseMs}ms linear`;
+  barFill.style.width = '100%';
+  SFX.play('snd-delete');
+
   for (const row of rows) {
     const rowIcons = iconEls.filter(el => el.dataset.row === row);
     rowIcons.forEach(el => {
       el.style.animation = '';
       el.classList.add('erasing');
     });
-    await delay(400);
+    await delay(eraseStepMs);
   }
 
-  await delay(600);
+  await delay(400);
+
+  await delay(300);
   defender.style.transition = 'all 0.5s ease';
   defender.style.opacity = '0';
-  defender.style.transform = 'scale(0.9)';
+  defender.style.transform = 'translateY(-8px) scale(0.96)';
   await delay(500);
   defender.style.display = 'none';
 

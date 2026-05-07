@@ -42,15 +42,81 @@ const GRID_ROWS  = 5;
 const CELL_W     = 110;
 const CELL_H     = 110;
 const HUD_H      = 90;
+const MOBILE_BP  = 768;
+const GAME_NOMINAL_W = 1060;
+let _scaleFactor = 1;
 
+function getScale() { return _scaleFactor; }
+
+function updateScale() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const gw = document.getElementById('game-world');
+  const isTouchLike = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const isAndroidLike = /Android/i.test(navigator.userAgent || '');
+  const shouldScaleMobile = vw < MOBILE_BP || vh < 820 || ((isTouchLike || isAndroidLike) && vh < 900);
+
+  invalidateGridOrigin();
+  if (!shouldScaleMobile) {
+    _scaleFactor = 1;
+    if (gw) {
+      gw.style.transform = '';
+      gw.style.transformOrigin = '';
+      gw.style.width = '';
+      gw.style.height = '';
+    }
+    return;
+  }
+  const mobileHudH = 38;
+  const plantBarH = 62;
+  const availH = window.innerHeight - mobileHudH - plantBarH;
+  const scaleW = vw / GAME_NOMINAL_W;
+  const scaleH = availH / (GRID_ROWS * CELL_H);
+  _scaleFactor = Math.min(scaleW, scaleH, 1);
+  _scaleFactor = Math.max(_scaleFactor, 0.42);
+  if (gw) {
+    const widthPx = Math.ceil(vw / _scaleFactor) + 2;
+    const heightPx = Math.ceil(availH / _scaleFactor) + 2;
+    gw.style.width = widthPx + 'px';
+    gw.style.height = heightPx + 'px';
+    gw.style.transform = 'scale(' + _scaleFactor + ')';
+    gw.style.transformOrigin = 'top left';
+  }
+}
+
+function viewportToGame(cx, cy) {
+  if (_scaleFactor === 1) return { x: cx, y: cy - HUD_H };
+  const gw = document.getElementById('game-world');
+  if (!gw) return { x: cx / _scaleFactor, y: cy / _scaleFactor };
+  const rect = gw.getBoundingClientRect();
+  return {
+    x: (cx - rect.left) / _scaleFactor,
+    y: (cy - rect.top) / _scaleFactor
+  };
+}
+
+var _gridOriginCache = null;
+var _gridOriginKey = '';
+function invalidateGridOrigin() { _gridOriginCache = null; _gridOriginKey = ''; }
 function getGridOrigin() {
+  const key = window.innerWidth + 'x' + window.innerHeight + '@' + _scaleFactor;
+  if (_gridOriginCache && _gridOriginKey === key) return _gridOriginCache;
   const totalW = GRID_COLS * CELL_W;
   const totalH = GRID_ROWS * CELL_H;
-  const areaH  = window.innerHeight - HUD_H;
-  return {
-    x: Math.round((window.innerWidth - totalW) / 2),
+  var areaW, areaH;
+  if (_scaleFactor < 1) {
+    areaW = window.innerWidth / _scaleFactor;
+    areaH = (window.innerHeight - 38 - 62) / _scaleFactor;
+  } else {
+    areaW = window.innerWidth;
+    areaH = window.innerHeight - HUD_H;
+  }
+  _gridOriginCache = {
+    x: Math.round((areaW - totalW) / 2),
     y: Math.round((areaH - totalH) / 2)
   };
+  _gridOriginKey = key;
+  return _gridOriginCache;
 }
 
 function cellToPixel(col, row) {
@@ -60,8 +126,9 @@ function cellToPixel(col, row) {
 
 function pixelToCell(px, py) {
   const o = getGridOrigin();
-  const col = Math.floor((px - o.x) / CELL_W);
-  const row = Math.floor(((py - HUD_H) - o.y) / CELL_H);
+  const gp = viewportToGame(px, py);
+  const col = Math.floor((gp.x - o.x) / CELL_W);
+  const row = Math.floor((gp.y - o.y) / CELL_H);
   if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return null;
   return { col, row };
 }
@@ -110,6 +177,8 @@ const State = {
   _torrentPairId:      0,
   _torrentSlots:       [],
   _torrentBatchCleanup: false,
+
+  _xsasHistory: [],
 
   _timers: {},
 };
@@ -161,22 +230,80 @@ function isAvastShielded(col, row) {
   return false;
 }
 
+const Graphics = {
+  _mode: null,
+  _applyClass() {
+    try {
+      const root = document.documentElement;
+      if (!root) return;
+      root.classList.toggle('gfx-low', this._mode === 'low');
+    } catch (e) {}
+  },
+  isLow() {
+    if (this._mode === null) {
+      try {
+        const saved = localStorage.getItem('pvz_graphics');
+        if (saved === 'low' || saved === 'high') {
+          this._mode = saved;
+        } else {
+          const isMobile = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+                           window.innerWidth < 900;
+          this._mode = isMobile ? 'low' : 'high';
+        }
+      } catch (e) { this._mode = 'high'; }
+      this._applyClass();
+    }
+    return this._mode === 'low';
+  },
+  set(mode) {
+    this._mode = mode;
+    try { localStorage.setItem('pvz_graphics', mode); } catch (e) {}
+    this._applyClass();
+  },
+};
+window.Graphics = Graphics;
+try { Graphics.isLow(); } catch (e) {}
+
 function addFilenameLabel(parent, text, extraClass = '') {
+  if (Graphics.isLow()) return null;
   const label = makeEl('span', `icon-label entity-file-label ${extraClass}`.trim(), parent);
   label.textContent = text;
   return label;
 }
 
+let _showZombieIds = false;
+function _attachZombieIdBadge(zombie) {
+  if (!zombie || !zombie.el || zombie._idBadge) return;
+  const badge = makeEl('span', 'zombie-id-badge', zombie.el);
+  badge.textContent = '#' + zombie.id;
+  zombie._idBadge = badge;
+}
+function _detachZombieIdBadge(zombie) {
+  if (zombie && zombie._idBadge) {
+    zombie._idBadge.remove();
+    zombie._idBadge = null;
+  }
+}
+function setShowZombieIds(show) {
+  _showZombieIds = !!show;
+  for (const z of State.zombies) {
+    if (!z.alive) continue;
+    if (_showZombieIds) _attachZombieIdBadge(z);
+    else _detachZombieIdBadge(z);
+  }
+}
+function isShowZombieIds() { return _showZombieIds; }
+
 function posEl(el, x, y) {
-  el.style.left = x + 'px';
-  el.style.top  = y + 'px';
+  if (el._x !== x) { el.style.left = x + 'px'; el._x = x; }
+  if (el._y !== y) { el.style.top  = y + 'px'; el._y = y; }
 }
 
 function spawnMiniCursik(parent) {
   const mc = makeEl('div', 'mini-cursik', parent || entitiesLayer());
   mc.style.position = 'absolute';
   const img = makeEl('img', null, mc);
-  img.src = 'static/img/ui/курсик.png';
+  img.src = 'static/img/ui/cursik.png';
   img.draggable = false;
   img.onerror = () => { img.style.display = 'none'; };
   return mc;
@@ -319,185 +446,185 @@ function tryPlacePlant(type, col, row) {
 
 const PLANTS = {
   sunflower: {
-    name: 'подсолнух.png',
+    name: 'sunflower.png',
     cost: 50,
-    file: 'подсолнух.png',
+    file: 'sunflower.png',
     folder: 'plants',
     shootInterval: null,
     sunInterval: [6000, 9000],
     cooldown: 5000,
-    displayName: 'подсолнух.png',
+    displayName: 'sunflower.png',
   },
   peashooter: {
-    name: 'горохострел.png',
+    name: 'peashooter.png',
     cost: 75,
-    file: 'горохострел.png',
+    file: 'peashooter.png',
     folder: 'plants',
     shootInterval: 2000,
     sunInterval: null,
     cooldown: 3000,
-    displayName: 'горохострел.png',
+    displayName: 'peashooter.png',
   },
   folder_magnet: {
-    name: 'папка-магнит.png',
+    name: 'folder-magnet.png',
     cost: 75,
-    file: 'папка-магнит.png',
+    file: 'folder-magnet.png',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 6000,
-    displayName: 'папка-магнит.png',
+    displayName: 'folder-magnet.png',
     attractRadius: 3,
     attractInterval: 2000,
   },
   siamese_peashooter: {
-    name: 'сиамский-горохострел.png',
+    name: 'siamese-peashooter.png',
     cost: 125,
-    file: 'сиамский-горохострел.png',
+    file: 'siamese-peashooter.png',
     folder: 'plants',
     shootInterval: 2200,
     sunInterval: null,
     cooldown: 5000,
-    displayName: 'сиам-горохострел.png',
+    displayName: 'siamese-peashooter.png',
     shootsBothWays: true,
   },
   double_peashooter: {
-    name: 'двойной-горохострел.png',
+    name: 'double-peashooter.jpg',
     cost: 125,
-    file: 'двойной-горохострел.png',
+    file: 'double-peashooter.jpg',
     folder: 'plants',
     shootInterval: 2000,
     sunInterval: null,
     cooldown: 5000,
-    displayName: 'дв-горохострел.png',
+    displayName: 'double-peashooter.jpg',
     shootsDouble: true,
   },
   snow_peashooter: {
-    name: 'запретострел.png',
+    name: 'snow-peashooter.jpg',
     cost: 100,
-    file: 'запретострел.png',
+    file: 'snow-peashooter.jpg',
     folder: 'plants',
     shootInterval: 2000,
     sunInterval: null,
     cooldown: 5000,
-    displayName: 'запретострел.png',
+    displayName: 'snow-peashooter.jpg',
     shootsSlow: true,
   },
   xsas_mushroom: {
-    name: 'xsas-гриб.png',
+    name: 'xsas-mushroom.png',
     cost: 150,
-    file: 'xsas-гриб.png',
+    file: 'xsas-mushroom.png',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 30000,
-    displayName: 'xsas-гриб.png',
+    displayName: 'xsas-mushroom.png',
     isExplosive: true,
     explosionRadius: 2,
   },
   sun_mushroom: {
-    name: 'солнце-гриб.png',
+    name: 'sun-mushroom.png',
     cost: 25,
-    file: 'солнце-гриб.png',
+    file: 'sun-mushroom.png',
     folder: 'plants',
     shootInterval: null,
     sunInterval: [5000, 8000],
     cooldown: 4000,
-    displayName: 'солнце-гриб.png',
+    displayName: 'sun-mushroom.png',
     nightOnly: true,
     sunValue: 15,
   },
   unarchiver: {
-    name: 'разархиватор.png',
+    name: 'unarchiver.png',
     cost: 50,
-    file: 'разархиватор.png',
+    file: 'unarchiver.png',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 2000,
-    displayName: 'разархиватор.png',
+    displayName: 'unarchiver.png',
     isItem: true,
   },
   kaspersky_bean: {
-    name: 'касперский-боб.png',
+    name: 'kaspersky-bean.png',
     cost: 50,
-    file: 'касперский-боб.png',
+    file: 'kaspersky-bean.png',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 3000,
-    displayName: 'касп-боб.png',
+    displayName: 'kaspersky-bean.png',
     isItem: true,
   },
   daisy: {
-    name: 'ромашка.jpg',
+    name: 'daisy.jpg',
     cost: 75,
-    file: 'ромашка.jpg',
+    file: 'daisy.jpg',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 8000,
-    displayName: 'ромашка.jpg',
+    displayName: 'daisy.jpg',
     dropInterval: [8000, 12000],
   },
   cherry: {
-    name: 'вишня.webp',
+    name: 'cherry.webp',
     cost: 80,
-    file: 'вишня.webp',
+    file: 'cherry.webp',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 0,
-    displayName: 'вишня.webp',
+    displayName: 'cherry.webp',
     isExplosive: true,
     explosionRadius: 1,
     explosionDelay: 2000,
     maxTargets: 5,
   },
   avast_nut: {
-    name: 'авасторех.jpg',
+    name: 'avast-nut.jpg',
     cost: 100,
-    file: 'авасторех.jpg',
+    file: 'avast-nut.jpg',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 20000,
-    displayName: 'авасторех.jpg',
+    displayName: 'avast-nut.jpg',
     isWall: true,
     shieldRadius: 1,
   },
   logic_mine: {
-    name: 'мина.png',
+    name: 'mine.jpg',
     cost: 25,
-    file: 'мина.png',
+    file: 'mine.jpg',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 5000,
-    displayName: 'мина.png',
+    displayName: 'mine.jpg',
     isMine: true,
   },
   basket_chomper: {
-    name: 'корзинокусалка.png',
+    name: 'basket-chomper.jpg',
     cost: 75,
-    file: 'корзинокусалка.png',
-    fileFull: 'корзинокусалка-полная.png',
+    file: 'basket-chomper.jpg',
+    fileFull: 'basket-chomper-full.jpg',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 8000,
-    displayName: 'корзинокусалка.png',
+    displayName: 'basket-chomper.jpg',
     digestTime: 18000,
   },
   torrent_lantern: {
-    name: 'торент-фонарь.png',
+    name: 'torrent-lantern.jpg',
     cost: 75,
-    file: 'торент-фонарь.png',
+    file: 'torrent-lantern.jpg',
     folder: 'plants',
     shootInterval: null,
     sunInterval: null,
     cooldown: 10000,
-    displayName: 'торент-фонарь.png',
+    displayName: 'torrent-lantern.jpg',
     pairRadius: 1,
     maxOnGrid: 2,
   },
@@ -701,7 +828,18 @@ function placePlant(type, col, row) {
   } else if (type === 'daisy') {
     scheduleDaisy(plantData);
   } else if (type === 'xsas_mushroom') {
-    plantData._xsasPlanted = performance.now();
+    var now = performance.now();
+    State._xsasHistory = State._xsasHistory.filter(function(t) { return now - t < 10000; });
+    State._xsasHistory.push(now);
+    if (State._xsasHistory.length >= 3) {
+      GameLog.log('BSOD', 'XSAS overload: ' + State._xsasHistory.length + ' placements in 10s');
+      gameTimer('xsas_overload_bsod', function() {
+        if (typeof Game !== 'undefined' && Game.triggerGameOver) {
+          Game.triggerGameOver(null, 'xsas_overload');
+        }
+      }, 500);
+    }
+    plantData._xsasPlanted = now;
     plantData._xsasDelay = 3000;
     gameTimer(`xsas_${col}_${row}`, () => {
       if (!State.plants[row][col]) return;
@@ -1091,7 +1229,7 @@ function shootPea(plant, direction = 1) {
     img.remove();
     el.classList.add('pea-fallback');
   };
-  img.src = 'static/img/other/горошина.png';
+  img.src = 'static/img/other/pea.png';
   if (direction < 0) img.style.transform = 'scaleX(-1)';
   if (isSlow) img.style.filter = 'hue-rotate(160deg) saturate(2) brightness(0.85)';
 
@@ -1113,7 +1251,7 @@ function spawnSun(x, y, falling = true, value = 25) {
   posEl(el, x, y);
 
   const img = makeEl('img', 'icon-img', el);
-  img.src = 'static/img/ui/солнце.png';
+  img.src = 'static/img/ui/sun.png';
   img.draggable = false;
   img.onerror = () => { img.remove(); const fb = makeEl('div', null, el); fb.textContent = '☀'; fb.style.fontSize='36px'; fb.style.width='48px'; fb.style.height='48px'; fb.style.textAlign='center'; };
 
@@ -1149,7 +1287,8 @@ function spawnSun(x, y, falling = true, value = 25) {
 }
 
 function spawnFallingSun() {
-  const x = rnd(80, window.innerWidth - 80);
+  const w = _scaleFactor < 1 ? window.innerWidth / _scaleFactor : window.innerWidth;
+  const x = rnd(80, w - 80);
   const y = 20;
   spawnSun(x, y, true);
 }
@@ -1185,7 +1324,7 @@ function dropSystemFile(x, y, row) {
   addFilenameLabel(el, 'sys.dll');
 
   const id = State.nextFileId++;
-  const file = { id, x, y, row, el, collected: false };
+  const file = { id, x, y, row, el, collected: false, kind: 'sys' };
   State.droppedFiles.push(file);
   GameLog.log('FILE', `Dropped sys file #${id} at row ${row} (${Math.round(x)},${Math.round(y)})`);
 
@@ -1204,9 +1343,56 @@ function dropSystemFile(x, y, row) {
   return file;
 }
 
+const TABLE_FILE_LIFETIME_MS = 15000;
+
+function dropTableFile(x, y, row) {
+  const el = makeEl('div', 'dropped-file-entity dropped-table-entity icon-entity', sunsLayer());
+  el.style.position = 'absolute';
+  posEl(el, x, y);
+
+  const img = makeEl('img', 'icon-img', el);
+  img.src = 'static/img/other/table.png';
+  img.draggable = false;
+  img.onerror = () => { img.remove(); el.textContent = '📊'; el.style.fontSize = '36px'; };
+
+  addFilenameLabel(el, 'table.xlsx');
+
+  const id = State.nextFileId++;
+  const file = { id, x, y, row, el, collected: false, kind: 'table' };
+  State.droppedFiles.push(file);
+  GameLog.log('FILE', `Dropped table file #${id} at row ${row} (${Math.round(x)},${Math.round(y)})`);
+
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (State.paused || State.gameOver) return;
+    UI.startFileDrag(file, e);
+  });
+
+  el.style.transform = 'scale(0) translateY(-20px)';
+  el.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+  requestAnimationFrame(() => { el.style.transform = 'scale(1) translateY(0)'; });
+
+  gameTimer(`table_decay_${id}`, () => {
+    if (file.collected) return;
+    GameLog.log('FILE', `Table file #${id} decayed`);
+    file.el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    file.el.style.opacity = '0';
+    file.el.style.transform = 'scale(0.6) translateY(10px)';
+    setTimeout(() => { if (!file.collected) removeDroppedFile(file); }, 400);
+  }, TABLE_FILE_LIFETIME_MS);
+
+  SFX.play('snd-sun');
+  return file;
+}
+
 function removeDroppedFile(file) {
   file.collected = true;
   file.el.remove();
+  if (file.kind === 'table') clearTimer(`table_decay_${file.id}`);
+  if (file.heldByMagnet && file.magnetCol !== undefined && file.magnetRow !== undefined) {
+    delete State._magnetBlocked[`${file.magnetCol}_${file.magnetRow}`];
+  }
   State.droppedFiles = State.droppedFiles.filter(f => f.id !== file.id);
 }
 
@@ -1216,6 +1402,7 @@ function checkWinrarFileCollision() {
     if (!z.alive || !z.canArchive) continue;
     for (const file of State.droppedFiles) {
       if (file.collected || file.heldByMagnet) continue;
+      if (file.kind === 'table') continue;
       if (file.row === z.row && Math.abs(z.x - file.x) < CELL_W * 0.8) {
         GameLog.log('BSOD', `WinRAR zombie #${z.id} archived dropped sys file #${file.id} → BSOD`);
         spawnParticles(file.x + 24, file.y + 20, '#ff0000', 15);
@@ -1227,58 +1414,67 @@ function checkWinrarFileCollision() {
 }
 
 const ZOMBIE_TYPES = {
-  zombie:      { name: 'зомби.webp', file: 'зомби.webp', hp: [5, 7], speed: 0.6, displayName: 'зомби.webp' },
-  your_death:  { name: 'ваша-смерть.png', file: 'ваша-смерть.png', hp: 999, speed: 0.3, isBoss: true, displayName: 'ваша-смерть.png' },
+  zombie:      { name: 'zombie.webp', file: 'zombie.webp', hp: [5, 7], speed: 0.6, displayName: 'zombie.webp' },
+  your_death:  { name: 'your-death.jpg', file: 'your-death.jpg', hp: 999, speed: 0.3, isBoss: true, displayName: 'your-death.jpg' },
   system_zombie: {
-    name: 'систем-зомби.png', file: 'систем-зомби.png', displayName: 'систем-зомби.png',
+    name: 'system-zombie.jpg', file: 'system-zombie.jpg', displayName: 'system-zombie.jpg',
     hp: [5, 7], speed: 0.6,
     hasSystemFile: true, fileHp: 4,
   },
   hdd_zombie: {
-    name: 'хдд-зомби.png', file: 'хдд-зомби.png', displayName: 'хдд-зомби.png',
+    name: 'hdd-zombie.jpg', file: 'hdd-zombie.jpg', displayName: 'hdd-zombie.jpg',
     hp: [10, 12], speed: 0.4,
     armorHits: 3, armorType: 'hdd',
   },
   ssd_zombie: {
-    name: 'ссд-зомби.png', file: 'ссд-зомби.png', displayName: 'ссд-зомби.png',
+    name: 'ssd-zombie.jpg', file: 'ssd-zombie.jpg', displayName: 'ssd-zombie.jpg',
     hp: [3, 5], speed: 0.8,
     armorHits: 2, armorType: 'ssd',
   },
   winrar_zombie: {
-    name: 'winrar-зомби.png', file: 'winrar-зомби.png', displayName: 'winrar-зомби.png',
+    name: 'winrar-zombie.png', file: 'winrar-zombie.png', displayName: 'winrar-zombie.png',
     hp: [5, 7], speed: 0.5,
     canArchive: true,
   },
   trojan_catapult: {
-    name: 'троянская-катапульта.jpg', file: 'троянская-катапульта.jpg',
-    displayName: 'троян-катапульта.jpg',
+    name: 'trojan-catapult.jpg', file: 'trojan-catapult.jpg',
+    displayName: 'trojan-catapult.jpg',
     hp: [8, 10], speed: 0.4,
     isCatapult: true, trojanInterval: 5000,
   },
   bungee: {
-    name: 'тарзанка.png', file: 'тарзанка.png',
-    displayName: 'тарзанка.png',
+    name: 'bungee.jpg', file: 'bungee.jpg',
+    displayName: 'bungee.jpg',
     hp: 8, speed: 0,
     isBungee: true,
   },
   flag_zombie: {
-    name: 'зомби-с-флагом.webp', file: 'зомби-с-флагом.webp',
-    displayName: 'зомби-с-флагом.webp',
+    name: 'flag-zombie.webp', file: 'flag-zombie.webp',
+    displayName: 'flag-zombie.webp',
     hp: [6, 8], speed: 0.5,
     isSupport: true,
     auraRadius: 1,
   },
   pole_loud: {
-    name: 'шест-громкий.png', file: 'шест-громкий.png',
-    displayName: 'шест-громкий.png',
+    name: 'pole-loud.png', file: 'pole-loud.png',
+    displayName: 'pole-loud.png',
     hp: [4, 6], speed: 0.6,
     volumeShift: 0.1,
   },
   pole_quiet: {
-    name: 'шест-тихий.png', file: 'шест-тихий.png',
-    displayName: 'шест-тихий.png',
+    name: 'pole-quiet.png', file: 'pole-quiet.png',
+    displayName: 'pole-quiet.png',
     hp: [4, 6], speed: 0.6,
     volumeShift: -0.1,
+  },
+  excel_zombie: {
+    name: 'excel-zombie.png', file: 'excel-zombie.png',
+    displayName: 'excel-zombie.png',
+    hp: 1, speed: 0.4,
+    isInvincible: true,
+    armorHits: 3, armorType: 'excel',
+    excelSlowPerN: 2,
+    excelSlowPct: 0.1,
   },
 };
 
@@ -1291,7 +1487,7 @@ function spawnZombie(type, row, opts) {
   const rightEdge = getGridOrigin().x + GRID_COLS * CELL_W;
   const startX = rightEdge + 80;
   const pos = cellToPixel(GRID_COLS - 1, row);
-  const y = pos.y + CELL_H/2 - 48;
+  const y = pos.y;
 
   const el = makeEl('div', 'zombie-entity icon-entity', entitiesLayer());
   el.dataset.type = type;
@@ -1344,7 +1540,12 @@ function spawnZombie(type, row, opts) {
     isSupport: cfg.isSupport || false,
     auraRadius: cfg.auraRadius || 0,
     volumeShift: cfg.volumeShift || 0,
+    isInvincible: cfg.isInvincible || false,
   };
+
+  if (zombie.isInvincible) {
+    hpBar.style.display = 'none';
+  }
 
   if (zombie.hasSystemFile) {
     zombie._fileEl = null;
@@ -1354,18 +1555,25 @@ function spawnZombie(type, row, opts) {
     zombie._armorEl = null;
   }
 
+  if (type === 'excel_zombie') {
+    zombie._excelDmgAccum = 0;
+    zombie._excelSpeedMod = 0;
+    zombie._excelReversed = false;
+  }
+
   if (zombie.isCatapult) {
     const trojanKey = `trojan_${id}`;
     gameInterval(trojanKey, () => fireTrojan(zombie), cfg.trojanInterval || 5000);
   }
 
   if (zombie.volumeShift) {
-    SFX._volume = SFX._volume + zombie.volumeShift;
+    SFX._volume = Math.max(0, SFX._volume + zombie.volumeShift);
     SFX.applyVolume();
     UI.syncVolumeSlider();
   }
 
   State.zombies.push(zombie);
+  if (_showZombieIds) _attachZombieIdBadge(zombie);
   GameLog.log('ZOMBIE', `Spawned ${type} #${id} on row ${row}, hp=${maxHp}, armor=${zombie.armorHits}, sysFile=${zombie.hasSystemFile}`);
 
   State.cursik.queue.push(id);
@@ -1410,23 +1618,23 @@ function spawnBungeeZombie(row, col, maxHp) {
 
   const vgaWrap = makeEl('div', 'bungee-part-wrap bungee-vga-wrap', content);
   const vga = makeEl('img', 'bungee-part bungee-vga', vgaWrap);
-  vga.src = 'static/img/zombies/вга.png';
+  vga.src = 'static/img/zombies/vga.png';
   vga.draggable = false;
-  addFilenameLabel(vgaWrap, 'вга.png');
+  addFilenameLabel(vgaWrap, 'vga.png');
 
   const wiresWrap = makeEl('div', 'bungee-wires', content);
   const wireCount = rndInt(7, 8);
   for (let i = 0; i < wireCount; i++) {
     const wireDiv = makeEl('div', 'bungee-wire-wrap', wiresWrap);
     const wire = makeEl('img', 'bungee-wire', wireDiv);
-    wire.src = 'static/img/zombies/провод.png';
+    wire.src = 'static/img/zombies/wire.png';
     wire.draggable = false;
-    addFilenameLabel(wireDiv, 'провод.png');
+    addFilenameLabel(wireDiv, 'wire.png');
   }
 
   const tarzWrap = makeEl('div', 'bungee-part-wrap', content);
   const tarz = makeEl('img', 'bungee-part bungee-tarz', tarzWrap);
-  tarz.src = 'static/img/zombies/тарзанка.png';
+  tarz.src = 'static/img/zombies/bungee.jpg';
   tarz.draggable = false;
   addFilenameLabel(tarzWrap, Lang.t('entity.bungee_label'));
 
@@ -1464,6 +1672,7 @@ function spawnBungeeZombie(row, col, maxHp) {
   };
 
   State.zombies.push(zombie);
+  if (_showZombieIds) _attachZombieIdBadge(zombie);
   GameLog.log('ZOMBIE', `Spawned bungee #${id} targeting [${col},${row}]`);
 
   posEl(mc, targetPos.x + 20, startY + 180);
@@ -1602,6 +1811,29 @@ function damageZombie(zombie, dmg) {
     return;
   }
 
+  if (zombie.armorType === 'excel') {
+    if (!zombie.armorBroken && zombie.armorHits > 0) {
+      zombie.armorHits -= dmg;
+      GameLog.log('ZOMBIE', `Damage ${dmg} to excel #${zombie.id} door, armorHits=${zombie.armorHits}`);
+      if (zombie.armorHits <= 0) {
+        zombie.armorBroken = true;
+        zombie.armorHits = 0;
+        const img = zombie.el.querySelector('.icon-img');
+        if (img) img.src = 'static/img/zombies/zombie.webp';
+        spawnParticles(zombie.x + 40, zombie.y + 30, '#888', 6);
+        GameLog.log('ZOMBIE', `Excel zombie #${zombie.id} door broken, can be slowed now`);
+      }
+    } else {
+      excelSpeedCheck(zombie, dmg);
+    }
+    return;
+  }
+
+  if (zombie.isInvincible) {
+    excelSpeedCheck(zombie, dmg);
+    return;
+  }
+
   if (zombie.armorType && !zombie.armorBroken && zombie.armorHits > 0) {
     zombie.armorHits -= dmg;
     GameLog.log('ZOMBIE', `Damage ${dmg} to ${zombie.type} #${zombie.id} armor, armorHits=${zombie.armorHits}`);
@@ -1610,7 +1842,7 @@ function damageZombie(zombie, dmg) {
       zombie.armorBroken = true;
       if (zombie._armorEl) { zombie._armorEl.remove(); zombie._armorEl = null; }
       const img = zombie.el.querySelector('.icon-img');
-      if (img) img.src = 'static/img/zombies/зомби.webp';
+      if (img) img.src = 'static/img/zombies/zombie.webp';
       spawnParticles(zombie.x + 40, zombie.y + 30, '#888', 6);
       const overflow = -zombie.armorHits;
       if (overflow > 0) {
@@ -1628,6 +1860,26 @@ function damageZombie(zombie, dmg) {
   if (zombie.hpText) zombie.hpText.textContent = Math.max(0, Math.round(pct)) + '%';
 
   if (zombie.hp <= 0) killZombie(zombie);
+  excelSpeedCheck(zombie, dmg);
+}
+
+function excelSpeedCheck(zombie, dmg) {
+  if (zombie.type !== 'excel_zombie' || !zombie.alive) return;
+  const cfg = ZOMBIE_TYPES.excel_zombie;
+  zombie._excelDmgAccum += dmg;
+  while (zombie._excelDmgAccum >= cfg.excelSlowPerN) {
+    zombie._excelDmgAccum -= cfg.excelSlowPerN;
+    if (!zombie._excelReversed) {
+      zombie._excelSpeedMod -= cfg.excelSlowPct;
+      if (zombie._excelSpeedMod <= -0.7) {
+        zombie._excelReversed = true;
+        zombie._excelSpeedMod = 0;
+        GameLog.log('ZOMBIE', `Excel zombie #${zombie.id} REVERSED!`);
+      }
+    } else {
+      zombie._excelSpeedMod += cfg.excelSlowPct;
+    }
+  }
 }
 
 function killZombie(zombie, opts) {
@@ -1650,16 +1902,9 @@ function killZombie(zombie, opts) {
       const o = getGridOrigin();
       const zCol = Math.round((zombie.x - o.x) / CELL_W);
       const safeCol = Math.max(0, Math.min(GRID_COLS - 1, zCol));
-      if (isAvastShielded(safeCol, zombie.row)) {
-        GameLog.log('AVAST', `Avast shield saved sys file from zombie #${zombie.id} — safe drop`);
-        const zPos = cellToPixel(safeCol, zombie.row);
-        dropSystemFile(zPos.x + CELL_W / 2 - 24, zPos.y + CELL_H / 2 - 24, zombie.row);
-        spawnParticles(zombie.x + 40, zombie.y + 20, '#00cc44', 10);
-      } else {
-        GameLog.log('BSOD', `System file destroyed on zombie #${zombie.id} → BSOD`);
-        spawnParticles(zombie.x + 40, zombie.y + 20, '#ff0000', 15);
-        Game.triggerGameOver(null, 'system_file_destroyed');
-      }
+      GameLog.log('BSOD', `System file destroyed on zombie #${zombie.id} → BSOD`);
+      spawnParticles(zombie.x + 40, zombie.y + 20, '#ff0000', 15);
+      Game.triggerGameOver(null, 'system_file_destroyed');
       return;
     }
   }
@@ -1667,7 +1912,7 @@ function killZombie(zombie, opts) {
   if (zombie.isCatapult) clearTimer(`trojan_${zombie.id}`);
 
   if (zombie.volumeShift) {
-    SFX._volume = SFX._volume - zombie.volumeShift;
+    SFX._volume = Math.min(1, SFX._volume - zombie.volumeShift);
     SFX.applyVolume();
     UI.syncVolumeSlider();
   }
@@ -1809,7 +2054,9 @@ function processCursikQueue() {
       return;
     }
 
-    const targetX = Math.max(zombie.x - CELL_W, o.x - CELL_W);
+    const targetX = zombie._excelReversed
+      ? zombie.x + CELL_W
+      : Math.max(zombie.x - CELL_W, o.x - CELL_W);
 
     animateZombieMove(zombie, targetX, CURSIK_DRAG_TIME, () => {
       if (zombie.el && zombie.el.parentNode) {
@@ -1898,8 +2145,21 @@ function animateZombieMove(zombie, targetX, duration, cb) {
       if (zombie.el) zombie.el.style.filter = '';
     }
     const remaining = Math.abs(targetX - zombie.x);
-    const step = Math.min(isSlowed ? DRAG_STEP_PX * 0.5 : DRAG_STEP_PX, remaining);
+    var baseStep = isSlowed ? DRAG_STEP_PX * 0.5 : DRAG_STEP_PX;
+    if (zombie._excelSpeedMod) baseStep = Math.max(1, baseStep * (1 + zombie._excelSpeedMod));
+    const step = Math.min(baseStep, remaining);
     const newX = zombie.x + dir * step;
+
+    if (dir === 1 && zombie._excelReversed) {
+      const rightEdge = o.x + GRID_COLS * CELL_W + 80;
+      if (newX >= rightEdge) {
+        zombie.x = newX;
+        posEl(zombie.el, zombie.x, zombie.y);
+        killZombie(zombie, { dev: true });
+        cb && cb();
+        return;
+      }
+    }
 
     if (dir === -1 && !State.funMode) {
       const oldCol = Math.floor((zombie.x - o.x) / CELL_W);
@@ -1947,16 +2207,16 @@ function spawnLawnmowers() {
 function spawnLawnmower(row) {
   const o = getGridOrigin();
   const x = o.x - 80;
-  const y = o.y + row * CELL_H + CELL_H/2 - 30;
+  const y = o.y + row * CELL_H;
 
   const el = makeEl('div', 'lawnmower-entity icon-entity', entitiesLayer());
   el.style.position = 'absolute';
   posEl(el, x, y);
 
   const img = makeEl('img', 'icon-img', el);
-  img.src = 'static/img/ui/косилка.png';
+  img.src = 'static/img/ui/lawnmower.png';
   img.draggable = false;
-  img.onerror = () => { img.remove(); const fb = makeEl('div', null, el); fb.textContent = '🚜'; fb.style.fontSize='36px'; fb.style.width='48px'; fb.style.height='48px'; fb.style.textAlign='center'; };
+  img.onerror = () => { img.remove(); const fb = makeEl('div', 'icon-img lawnmower-fallback', el); fb.textContent = '🚜'; };
 
   addFilenameLabel(el, Lang.t('entity.mower'), 'mower-file-label');
   const data = { row, x, y, running: false, el, alive: true };
@@ -2036,12 +2296,37 @@ function checkZombieRow(zombie) {
 const PEA_STEP_PX = 30;
 const PEA_STEP_MS = 100;
 
+var _zombiesByRow = null;
+function buildZombieRowIndex() {
+  if (_zombiesByRow && _zombiesByRow.length === GRID_ROWS) {
+    for (var r = 0; r < GRID_ROWS; r++) _zombiesByRow[r].length = 0;
+  } else {
+    _zombiesByRow = [];
+    for (var r = 0; r < GRID_ROWS; r++) _zombiesByRow.push([]);
+  }
+  for (var i = 0; i < State.zombies.length; i++) {
+    var z = State.zombies[i];
+    if (!z.alive || z.isBungee) continue;
+    if (z.row >= 0 && z.row < GRID_ROWS) _zombiesByRow[z.row].push(z);
+  }
+  return _zombiesByRow;
+}
+
 function updatePeas(dt) {
+  if (State.peas.length === 0) return;
+  const byRow = buildZombieRowIndex();
+  const o = getGridOrigin();
+  const rightEdge = o.x + GRID_COLS * CELL_W + 80;
+  const leftEdge = o.x - 80;
+  const lowGfx = Graphics.isLow();
+  const now = performance.now();
+
   for (let i = State.peas.length - 1; i >= 0; i--) {
     const pea = State.peas[i];
     if (!pea.alive) continue;
     const dir = pea.direction || 1;
 
+    const prevX = pea.x;
     pea._stepAcc = (pea._stepAcc || 0) + dt;
     if (pea._stepAcc >= PEA_STEP_MS) {
       pea._stepAcc -= PEA_STEP_MS;
@@ -2051,24 +2336,28 @@ function updatePeas(dt) {
     }
 
     let hit = false;
-    for (const z of State.zombies) {
-      if (!z.alive || z.isBungee) continue;
-      if (z.row !== pea.row) continue;
-      if (Math.abs(z.x - pea.x) < 50) {
-        damageZombie(z, 1);
-        if (pea.slow) {
-          z._slowedUntil = performance.now() + 3000;
-          if (z.el) z.el.style.filter = 'brightness(0.9) sepia(1) hue-rotate(190deg) saturate(3)';
+    const rowZombies = byRow[pea.row];
+    if (rowZombies) {
+      const sweepLo = Math.min(prevX, pea.x);
+      const sweepHi = Math.max(prevX, pea.x);
+      const ZOMBIE_HALF_W = 45;
+      for (let j = 0; j < rowZombies.length; j++) {
+        const z = rowZombies[j];
+        const zLo = z.x - ZOMBIE_HALF_W;
+        const zHi = z.x + ZOMBIE_HALF_W;
+        if (sweepHi >= zLo && sweepLo <= zHi) {
+          damageZombie(z, 1);
+          if (pea.slow) {
+            z._slowedUntil = now + 3000;
+            if (z.el) z.el.style.filter = 'brightness(0.9) sepia(1) hue-rotate(190deg) saturate(3)';
+          }
+          hit = true;
+          if (!lowGfx) spawnParticles(pea.x, pea.peaY, pea.slow ? '#4488ff' : '#7fff00', 4);
+          break;
         }
-        hit = true;
-        spawnParticles(pea.x, pea.peaY, pea.slow ? '#4488ff' : '#7fff00', 4);
-        break;
       }
     }
 
-    const o = getGridOrigin();
-    const rightEdge = o.x + GRID_COLS * CELL_W + 80;
-    const leftEdge = o.x - 80;
     if (hit || pea.x > rightEdge || pea.x < leftEdge) {
       pea.alive = false;
       pea.el.remove();
@@ -2161,23 +2450,33 @@ function scheduleFolderMagnet(plant) {
     const plantPos = cellToPixel(plant.col, plant.row);
     for (const z of State.zombies) {
       if (!z.alive) continue;
-      if (!z.hasSystemFile || z.fileHp <= 0) continue;
+      const isExcelDoor = z.type === 'excel_zombie' && !z.armorBroken && z.armorHits > 0;
+      const hasSysFile = z.hasSystemFile && z.fileHp > 0;
+      if (!isExcelDoor && !hasSysFile) continue;
       const distX = Math.abs(z.x - plantPos.x) / CELL_W;
       const distY = Math.abs(z.row - plant.row);
       if (distX <= cfg.attractRadius && (State.funMode ? distY === 0 : distY <= cfg.attractRadius)) {
-        GameLog.log('MAGNET', `Folder-magnet [${plant.col},${plant.row}] attracted sys file from zombie #${z.id} on row ${z.row}`);
-        z.hasSystemFile = false;
-        z.fileHp = 0;
-        if (z._fileEl) { z._fileEl.remove(); z._fileEl = null; }
-        const imgEl = z.el.querySelector('.icon-img');
-        if (imgEl) imgEl.src = 'static/img/zombies/зомби.webp';
+        if (isExcelDoor) {
+          GameLog.log('MAGNET', `Folder-magnet [${plant.col},${plant.row}] pulled door off excel zombie #${z.id} on row ${z.row}`);
+          z.armorBroken = true;
+          z.armorHits = 0;
+          const imgEl = z.el.querySelector('.icon-img');
+          if (imgEl) imgEl.src = 'static/img/zombies/zombie.webp';
+        } else {
+          GameLog.log('MAGNET', `Folder-magnet [${plant.col},${plant.row}] attracted sys file from zombie #${z.id} on row ${z.row}`);
+          z.hasSystemFile = false;
+          z.fileHp = 0;
+          if (z._fileEl) { z._fileEl.remove(); z._fileEl = null; }
+          const imgEl = z.el.querySelector('.icon-img');
+          if (imgEl) imgEl.src = 'static/img/zombies/zombie.webp';
+        }
 
         State._magnetBlocked[magnetKey] = true;
 
         const flyEl = makeEl('div', 'magnet-fly-file', sunsLayer());
         flyEl.style.position = 'absolute';
         const flyImg = makeEl('img', 'icon-img', flyEl);
-        flyImg.src = 'static/img/other/sys.png';
+        flyImg.src = isExcelDoor ? 'static/img/other/table.png' : 'static/img/other/sys.png';
         flyImg.draggable = false;
         posEl(flyEl, z.x + 20, z.y + 10);
         flyEl.style.transition = 'left 0.6s cubic-bezier(0.2,0.8,0.3,1), top 0.6s cubic-bezier(0.2,0.8,0.3,1), transform 0.6s ease';
@@ -2194,7 +2493,9 @@ function scheduleFolderMagnet(plant) {
           SFX.play('snd-sun');
           const dropX = plantPos.x + CELL_W / 2 - 24;
           const dropY = plantPos.y + CELL_H / 2 - 24;
-          const file = dropSystemFile(dropX, dropY, plant.row);
+          const file = isExcelDoor
+            ? dropTableFile(dropX, dropY, plant.row)
+            : dropSystemFile(dropX, dropY, plant.row);
           if (file) {
             file.heldByMagnet = true;
             file.magnetCol = plant.col;
@@ -2205,6 +2506,7 @@ function scheduleFolderMagnet(plant) {
         break;
       }
     }
+
   }, cfg.attractInterval);
 }
 
@@ -2219,7 +2521,7 @@ function fireTrojan(zombie) {
     }
   }
   for (const f of State.droppedFiles) {
-    if (!f.collected && !f.heldByMagnet) {
+    if (!f.collected && !f.heldByMagnet && f.kind !== 'table') {
       targets.push({ kind: 'file', fileObj: f, x: f.x, y: f.y });
     }
   }
@@ -2243,7 +2545,7 @@ function fireTrojan(zombie) {
 
   const proj = makeEl('div', 'trojan-projectile', sunsLayer());
   const projImg = makeEl('img', null, proj);
-  projImg.src = 'static/img/other/троян.webp';
+  projImg.src = 'static/img/other/trojan.webp';
   projImg.draggable = false;
   projImg.onerror = () => { proj.textContent = '🦠'; proj.style.fontSize = '24px'; };
   posEl(proj, startX, startY);
@@ -2444,6 +2746,10 @@ function triggerXSASExplosion(plant) {
     var z = xsasTargets[i];
     if (!z.alive) continue;
     if (State.cursik.dragZombieId === z.id) hitCursikZombie = true;
+    if (z.type === 'excel_zombie') {
+      z.isInvincible = false;
+      z.hp = 0;
+    }
     killZombie(z, { dropFile: true });
   }
 
@@ -2542,7 +2848,7 @@ function triggerCherryExplosion(plant) {
   explEl.style.zIndex = '50';
   explEl.style.pointerEvents = 'none';
   const explImg = makeEl('img', '', explEl);
-  explImg.src = 'static/effects/взрыв.png';
+  explImg.src = 'static/effects/explosion.png';
   explImg.style.width = '100%';
   explImg.style.height = '100%';
   explImg.draggable = false;
@@ -2567,6 +2873,11 @@ function triggerCherryExplosion(plant) {
   const targets = inRange.slice(0, PLANTS.cherry.maxTargets);
 
   for (const z of targets) {
+    if (z.type === 'excel_zombie') {
+      excelSpeedCheck(z, 20);
+      spawnParticles(z.x + 40, z.y + 30, '#ff3300', 6);
+      continue;
+    }
     if (State.cursik.dragZombieId === z.id) hitCursikZombie = true;
     killZombie(z, { dropFile: true });
   }
@@ -2609,7 +2920,7 @@ function triggerMineExplosion(plant) {
   explEl.style.zIndex = '50';
   explEl.style.pointerEvents = 'none';
   const explImg = makeEl('img', '', explEl);
-  explImg.src = 'static/effects/взрыв.png';
+  explImg.src = 'static/effects/explosion.png';
   explImg.style.width = '100%';
   explImg.style.height = '100%';
   explImg.draggable = false;
@@ -2620,6 +2931,11 @@ function triggerMineExplosion(plant) {
     if (!z.alive || z.isBoss) continue;
     const zCol = Math.floor((z.x - o.x) / CELL_W);
     if (zCol === cx && z.row === cy) {
+      if (z.type === 'excel_zombie') {
+        excelSpeedCheck(z, 20);
+        spawnParticles(z.x + 40, z.y + 30, '#ff3300', 6);
+        continue;
+      }
       if (State.cursik.dragZombieId === z.id) hitCursikZombie = true;
       killZombie(z, { dropFile: true });
     }
@@ -2642,6 +2958,7 @@ function triggerMineExplosion(plant) {
 
 function checkPlantsEaten() {
   State.zombies.filter(z => z.alive && !z.isBungee).forEach(zombie => {
+    if (zombie._excelReversed) return;
     const o = getGridOrigin();
     const col = Math.floor((zombie.x - o.x) / CELL_W);
     if (col < 0 || col >= GRID_COLS) return;
@@ -2809,6 +3126,10 @@ function showDeleteDialog(col, row, plant) {
 }
 
 function spawnParticles(x, y, color, count) {
+  if (Graphics.isLow()) {
+    if (count > 6) count = 2;
+    else return;
+  }
   const layer = particlesLayer();
   for (let i = 0; i < count; i++) {
     const el = makeEl('div', 'particle', layer);
@@ -2872,6 +3193,7 @@ window.Engine = {
   tryPlacePlant,
   triggerLawnmower,
   dropSystemFile,
+  dropTableFile,
   removeDroppedFile,
   posEl,
   rnd, rndInt,
@@ -2881,4 +3203,6 @@ window.Engine = {
   recalcTorrentSlots,
   spawnDaisyPlantDrop,
   CELL_W, CELL_H, GRID_COLS, GRID_ROWS, HUD_H,
+  getScale, updateScale, viewportToGame,
+  setShowZombieIds, isShowZombieIds,
 };

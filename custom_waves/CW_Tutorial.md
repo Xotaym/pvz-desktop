@@ -98,6 +98,7 @@ cwave stop          - остановить текущую кастомную в�
 | `flag_zombie` | Зомби с флагом | Делает соседних зомби бессмертными |
 | `pole_loud` | Шест-громкий | Повышает громкость при приближении |
 | `pole_quiet` | Шест-тихий | Понижает громкость при приближении |
+| `excel_zombie` | Excel-зомби | Excel-щит, замедляется от урона |
 | `your_death` | Ваша смерть | Босс |
 
 ### Ключи растений
@@ -204,6 +205,7 @@ Each wave is an object with a `zombies` array. Waves run sequentially: the next 
 | `flag_zombie` | Flag Zombie | Makes adjacent zombies invincible |
 | `pole_loud` | Loud Pole | Increases volume as it approaches |
 | `pole_quiet` | Quiet Pole | Decreases volume as it approaches |
+| `excel_zombie` | Excel Zombie | Excel shield, slows from damage |
 | `your_death` | Your Death | Boss |
 
 ### Plant keys

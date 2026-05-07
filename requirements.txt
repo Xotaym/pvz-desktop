@@ -1,7 +1,5 @@
-# Plants VS Zombies Desktop — Python зависимости
-# Установка: pip install -r requirements.txt
-
-Pillow>=10.0.0
 pywebview>=5.0
-pywin32>=30
-pyinstaller>=6.0
+pywin32>=306; sys_platform == 'win32'
+qtpy; sys_platform == 'linux'
+PyQt6; sys_platform == 'linux'
+PyQt6-WebEngine; sys_platform == 'linux'

@@ -24,9 +24,15 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.0-2ecc71?style=flat-square" />
+  <img src="https://img.shields.io/badge/version-1.0.0-2ecc71?style=flat-square" />
   <img src="https://img.shields.io/badge/Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" />
   <img src="https://img.shields.io/badge/Python%203.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
+</p>
+
+<p align="center">
+  <a href="https://discord.gg/HjAUGBSvze">
+    <img src="https://img.shields.io/badge/JOIN%20OUR%20DISCORD-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=2c2f33" height="40" alt="Discord" />
+  </a>
 </p>
 
 <br>
@@ -49,16 +55,16 @@
 
 <table align="center">
 <tr>
-<td align="center" width="120"><img src="static/img/plants/подсолнух.png" width="56" /><br><b>Подсолнух</b><br><sub>50 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/горохострел.png" width="56" /><br><b>Горохострел</b><br><sub>75 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/папка-магнит.png" width="56" /><br><b>Папка-магнит</b><br><sub>75 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/сиамский-горохострел.png" width="56" /><br><b>Сиамский</b><br><sub>125 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/xsas-гриб.png" width="56" /><br><b>КСАС-гриб</b><br><sub>150 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/солнце-гриб.png" width="56" /><br><b>Солнце-гриб</b><br><sub>25 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/разархиватор.png" width="56" /><br><b>Разархиватор</b><br><sub>50 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/касперский-боб.png" width="56" /><br><b>Касперский-боб</b><br><sub>50 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/ромашка.jpg" width="56" /><br><b>Ромашка</b><br><sub>75 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/вишня.webp" width="56" /><br><b>Вишня</b><br><sub>80 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/sunflower.png" width="56" /><br><b>Подсолнух</b><br><sub>50 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/peashooter.png" width="56" /><br><b>Горохострел</b><br><sub>75 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/folder-magnet.png" width="56" /><br><b>Папка-магнит</b><br><sub>75 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/siamese-peashooter.png" width="56" /><br><b>Сиамский</b><br><sub>125 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/xsas-mushroom.png" width="56" /><br><b>КСАС-гриб</b><br><sub>150 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/sun-mushroom.png" width="56" /><br><b>Солнце-гриб</b><br><sub>25 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/unarchiver.png" width="56" /><br><b>Разархиватор</b><br><sub>50 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/kaspersky-bean.png" width="56" /><br><b>Касперский-боб</b><br><sub>50 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/daisy.jpg" width="56" /><br><b>Ромашка</b><br><sub>75 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/cherry.webp" width="56" /><br><b>Вишня</b><br><sub>80 солнц</sub></td>
 </tr>
 <tr>
 <td align="center"><sub>Генерирует солнца каждые несколько секунд</sub></td>
@@ -73,15 +79,15 @@
 <td align="center"><sub>3x3 взрыв, макс. 5 зомби</sub></td>
 </tr>
 <tr>
-<td align="center" width="120"><img src="static/img/plants/авасторех.jpg" width="56" /><br><b>Авасторех</b><br><sub>100 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/мина.png" width="56" /><br><b>Логическая мина</b><br><sub>25 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/торент-фонарь.png" width="56" /><br><b>Торент-фонарь</b><br><sub>75 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/корзинокусалка.png" width="56" /><br><b>Корзинокусалка</b><br><sub>75 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/двойной-горохострел.png" width="56" /><br><b>Двойной горохострел</b><br><sub>125 солнц</sub></td>
-<td align="center" width="120"><img src="static/img/plants/запретострел.png" width="56" /><br><b>Запретострел</b><br><sub>100 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/avast-nut.jpg" width="56" /><br><b>Авасторех</b><br><sub>100 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/mine.jpg" width="56" /><br><b>Логическая мина</b><br><sub>25 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/torrent-lantern.jpg" width="56" /><br><b>Торент-фонарь</b><br><sub>75 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/basket-chomper.jpg" width="56" /><br><b>Корзинокусалка</b><br><sub>75 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/double-peashooter.jpg" width="56" /><br><b>Двойной горохострел</b><br><sub>125 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/snow-peashooter.jpg" width="56" /><br><b>Запретострел</b><br><sub>100 солнц</sub></td>
 </tr>
 <tr>
-<td align="center"><sub>Антивирус-стена. Защищает системные файлы</sub></td>
+<td align="center"><sub>Антивирус-стена. Блокирует трояны</sub></td>
 <td align="center"><sub>Взрывается при контакте с зомби</sub></td>
 <td align="center"><sub>Парное растение. Зеркалит посадки</sub></td>
 <td align="center"><sub>Мгновенно съедает зомби</sub></td>
@@ -96,14 +102,14 @@
 
 <table align="center">
 <tr>
-<td align="center" width="120"><img src="static/img/zombies/зомби.webp" width="56" /><br><b>Зомби</b></td>
-<td align="center" width="120"><img src="static/img/zombies/систем-зомби.png" width="56" /><br><b>Систем</b></td>
-<td align="center" width="120"><img src="static/img/zombies/хдд-зомби.png" width="56" /><br><b>HDD</b></td>
-<td align="center" width="120"><img src="static/img/zombies/ссд-зомби.png" width="56" /><br><b>SSD</b></td>
-<td align="center" width="120"><img src="static/img/zombies/winrar-зомби.png" width="56" /><br><b>WinRAR</b></td>
-<td align="center" width="120"><img src="static/img/zombies/троянская-катапульта.jpg" width="56" /><br><b>Троян-катапульта</b></td>
-<td align="center" width="120"><img src="static/img/zombies/тарзанка.png" width="56" /><br><b>Тарзанка</b></td>
-<td align="center" width="120"><img src="static/img/zombies/ваша-смерть.png" width="56" /><br><b>Ваша Смерть</b></td>
+<td align="center" width="120"><img src="static/img/zombies/zombie.webp" width="56" /><br><b>Зомби</b></td>
+<td align="center" width="120"><img src="static/img/zombies/system-zombie.jpg" width="56" /><br><b>Систем</b></td>
+<td align="center" width="120"><img src="static/img/zombies/hdd-zombie.jpg" width="56" /><br><b>HDD</b></td>
+<td align="center" width="120"><img src="static/img/zombies/ssd-zombie.jpg" width="56" /><br><b>SSD</b></td>
+<td align="center" width="120"><img src="static/img/zombies/winrar-zombie.png" width="56" /><br><b>WinRAR</b></td>
+<td align="center" width="120"><img src="static/img/zombies/trojan-catapult.jpg" width="56" /><br><b>Троян-катапульта</b></td>
+<td align="center" width="120"><img src="static/img/zombies/bungee.jpg" width="56" /><br><b>Тарзанка</b></td>
+<td align="center" width="120"><img src="static/img/zombies/your-death.jpg" width="56" /><br><b>Ваша Смерть</b></td>
 </tr>
 <tr>
 <td align="center"><sub>Обычный. Каждый следующий — «копия» файла.</sub></td>
@@ -116,14 +122,16 @@
 <td align="center"><sub>???</sub></td>
 </tr>
 <tr>
-<td align="center" width="120"><img src="static/img/zombies/зомби-с-флагом.webp" width="56" /><br><b>Зомби с флагом</b></td>
-<td align="center" width="120"><img src="static/img/zombies/шест-громкий.png" width="56" /><br><b>Шест-громкий</b></td>
-<td align="center" width="120"><img src="static/img/zombies/шест-тихий.png" width="56" /><br><b>Шест-тихий</b></td>
+<td align="center" width="120"><img src="static/img/zombies/flag-zombie.webp" width="56" /><br><b>Зомби с флагом</b></td>
+<td align="center" width="120"><img src="static/img/zombies/pole-loud.png" width="56" /><br><b>Шест-громкий</b></td>
+<td align="center" width="120"><img src="static/img/zombies/pole-quiet.png" width="56" /><br><b>Шест-тихий</b></td>
+<td align="center" width="120"><img src="static/img/zombies/excel-zombie.png" width="56" /><br><b>Excel-зомби</b></td>
 </tr>
 <tr>
 <td align="center"><sub>Делает соседних зомби бессмертными. Убей первым!</sub></td>
 <td align="center"><sub>Повышает громкость при приближении</sub></td>
 <td align="center"><sub>Понижает громкость при приближении</sub></td>
+<td align="center"><sub>Excel-щит. Замедляется от урона, может развернуться!</sub></td>
 </tr>
 </table>
 
@@ -214,7 +222,7 @@ python server.py
 
 A fan-made Plants vs Zombies made by Russian developer where the game is played **on your real Windows desktop**.
 
-**Features:** 16 plants, 11 zombies (including a boss), trojan infection mechanic, night mode, BSOD death screens, dev panel with console.
+**Features:** 16 plants, 12 zombies (including a boss), trojan infection mechanic, night mode, BSOD death screens, dev panel with console.
 
 **Quick start:**
 ```
@@ -224,6 +232,22 @@ pip install -r requirements.txt
 python server.py
 ```
 Or run `start.bat`. For standalone `.exe` — run `build.bat`.
+
+<br>
+
+---
+
+<h2 align="center">Сообщество</h2>
+
+<p align="center">
+  <a href="https://discord.gg/HjAUGBSvze">
+    <img src="https://invidget.switchblade.xyz/HjAUGBSvze" alt="Discord" />
+  </a>
+</p>
+
+<p align="center">
+  <sub>Баг-репорты, идеи для волн, обсуждения апдейтов и просто потрепаться - заходи в Discord.</sub>
+</p>
 
 <br>
 

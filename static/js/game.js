@@ -61,7 +61,7 @@ const WAVE_CONFIGS = [
     { type: 'flag_zombie',      row: 3, delay: 6000 },
     { type: 'bungee',           row: 4, delay: 7000 },
     { type: 'winrar_zombie',    row: 0, delay: 8000 },
-    { type: 'zombie',           row: 2, delay: 9000 },
+    { type: 'excel_zombie',     row: 2, delay: 9000 },
     { type: 'ssd_zombie',       row: 1, delay: 10000 },
     { type: 'hdd_zombie',       row: 3, delay: 11000 },
     { type: 'bungee',           row: 2, delay: 12000 },
@@ -81,7 +81,7 @@ const WAVE_CONFIGS = [
     { type: 'system_zombie',    row: 0, delay: 8500 },
     { type: 'hdd_zombie',       row: 2, delay: 9500 },
     { type: 'trojan_catapult',  row: 3, delay: 10500 },
-    { type: 'bungee',           row: 4, delay: 11500 },
+    { type: 'excel_zombie',     row: 4, delay: 11500 },
     { type: 'ssd_zombie',       row: 1, delay: 12500 },
   ]},
   { zombies: [
@@ -103,8 +103,9 @@ const WAVE_CONFIGS = [
     { type: 'ssd_zombie',       row: 0, delay: 10500 },
     { type: 'zombie',           row: 4, delay: 11000 },
     { type: 'flag_zombie',      row: 2, delay: 11500 },
-    { type: 'hdd_zombie',       row: 1, delay: 12500 },
+    { type: 'excel_zombie',     row: 1, delay: 12500 },
     { type: 'bungee',           row: 3, delay: 13000 },
+    { type: 'excel_zombie',     row: 3, delay: 14000 },
   ]},
   { zombies: [], isBossWave: true },
 ];
@@ -212,14 +213,14 @@ function startBossWave() {
 
     waveTimeouts.push(setTimeout(() => {
       if (S.gameOver) return;
-      const gw = document.getElementById('game-world');
-      if (gw) {
+      const target = document.getElementById('entities-layer');
+      if (target) {
         const o = Engine.getGridOrigin();
-        const focusX = o.x + 2 * Engine.CELL_W;
-        const focusY = (Engine.GRID_ROWS / 2) * Engine.CELL_H;
-        gw.style.transition = 'transform 2s cubic-bezier(0.25, 0.1, 0.25, 1)';
-        gw.style.transformOrigin = `${focusX}px ${focusY}px`;
-        gw.style.transform = 'scale(2.2)';
+        const focusX = o.x + 2 * Engine.CELL_W + Engine.CELL_W / 2;
+        const focusY = o.y + 2 * Engine.CELL_H + Engine.CELL_H / 2;
+        target.style.transition = 'transform 2s cubic-bezier(0.25, 0.1, 0.25, 1)';
+        target.style.transformOrigin = `${focusX}px ${focusY}px`;
+        target.style.transform = 'scale(2.2)';
       }
     }, 5000));
 
@@ -246,7 +247,7 @@ function startBossWave() {
       explosionEl.style.left = boomX + 'px';
       explosionEl.style.top = boomY + 'px';
       const explosionImg = document.createElement('img');
-      explosionImg.src = 'static/effects/взрыв.png';
+      explosionImg.src = 'static/effects/explosion.png';
       explosionImg.style.width = '100%';
       explosionImg.style.height = '100%';
       explosionEl.appendChild(explosionImg);
@@ -299,6 +300,7 @@ function getDeathReason(key) {
 function triggerGameOver(zombie, reason) {
   const S = Engine.State;
   if (S.gameOver) return;
+  if (!S.started) return;
   S.gameOver = true;
   Engine.clearAllTimers();
 
@@ -310,15 +312,17 @@ function triggerGameOver(zombie, reason) {
     zombie.el.classList.add('selected');
     const targetX = zombie.x - 200;
     Engine.moveCursikTo(zombie.x + 37, zombie.y + 48, () => {
+      if (!S.started || !S.gameOver) return;
       S.cursik.el.classList.add('dragging');
       animateGameOverDrag(zombie, targetX, () => {
+        if (!S.started) return;
         zombie.el.classList.remove('selected');
         S.cursik.el.classList.remove('dragging');
         showBSOD(deathReason);
       });
     }, true);
   } else {
-    setTimeout(() => showBSOD(deathReason), 500);
+    setTimeout(() => { if (S.started) showBSOD(deathReason); }, 500);
   }
 }
 
@@ -519,7 +523,7 @@ function showTutorialStep(onComplete) {
       mc.style.top = (cy + off.y) + 'px';
       mc.style.animationDelay = off.delay;
       const img = document.createElement('img');
-      img.src = 'static/img/ui/курсик.png';
+      img.src = 'static/img/ui/cursik.png';
       img.draggable = false;
       img.onerror = () => { img.style.display = 'none'; };
       mc.appendChild(img);
@@ -670,6 +674,17 @@ function cleanupWaves() {
   waveActive = false;
   currentWaveZombiesSpawned = 0;
   currentWaveZombiesTotal = 0;
+  document.querySelectorAll('.wave-banner').forEach(el => el.remove());
+  document.querySelectorAll('.ingame-explosion').forEach(el => el.remove());
+  document.querySelectorAll('div[style*="boss-flash"]').forEach(el => el.remove());
+  const ent = document.getElementById('entities-layer');
+  if (ent) {
+    ent.style.transition = '';
+    ent.style.transform = '';
+    ent.style.transformOrigin = '';
+  }
+  const gw = document.getElementById('game-world');
+  if (gw) gw.classList.remove('screen-shake');
 }
 
 function startCustomWave(config) {
