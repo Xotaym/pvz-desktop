@@ -130,6 +130,24 @@ const SFX = {
     if (this._masterGain) this._masterGain.gain.value = v;
   },
 
+  duckMusic(level = 0.2, duration = 0.4) {
+    if (!this._musicGain || !this._ctx) return;
+    if (this._musicMuted) return;
+    const now = this._ctx.currentTime;
+    this._musicGain.gain.cancelScheduledValues(now);
+    this._musicGain.gain.setValueAtTime(this._musicGain.gain.value, now);
+    this._musicGain.gain.linearRampToValueAtTime(level, now + duration);
+  },
+
+  unduckMusic(duration = 0.4) {
+    if (!this._musicGain || !this._ctx) return;
+    if (this._musicMuted) return;
+    const now = this._ctx.currentTime;
+    this._musicGain.gain.cancelScheduledValues(now);
+    this._musicGain.gain.setValueAtTime(this._musicGain.gain.value, now);
+    this._musicGain.gain.linearRampToValueAtTime(1, now + duration);
+  },
+
   _applyMutes() {
     if (this._musicGain) this._musicGain.gain.value = this._musicMuted ? 0 : 1;
     if (this._sfxGain) this._sfxGain.gain.value = this._sfxMuted ? 0 : 1;
@@ -222,9 +240,11 @@ const PLANT_DISPLAY = [
   { key: 'daisy',             name: 'daisy.jpg',                  cost: 75,  file: 'daisy.jpg' },
   { key: 'cherry',            name: 'cherry.webp',                cost: 80,  file: 'cherry.webp' },
   { key: 'avast_nut',         name: 'avast-nut.jpg',              cost: 100, file: 'avast-nut.jpg' },
+  { key: 'torchwall',         name: 'torchwall.png',              cost: 175, file: 'torchwall.png' },
   { key: 'logic_mine',       name: 'mine.jpg',                   cost: 25,  file: 'mine.jpg' },
   { key: 'torrent_lantern', name: 'torrent-lantern.jpg',        cost: 75,  file: 'torrent-lantern.jpg' },
   { key: 'basket_chomper',   name: 'basket-chomper.jpg',         cost: 75,  file: 'basket-chomper.jpg' },
+  { key: 'catmouse',         name: 'catmouse.png',               cost: 175, file: 'catmouse.png' },
 ];
 
 function bindPlantDragHandlers() {
@@ -690,8 +710,9 @@ function updateModeIndicators() {
 function initPauseMenu() {
   document.getElementById('pause-resume').addEventListener('click', resumeGame);
   document.getElementById('pause-info').addEventListener('click', () => {
-    resumeGame();
+    document.getElementById('pause-menu').classList.add('hidden');
     showScreen('docs');
+    document.getElementById('screen-docs').dataset.from = 'pause';
   });
   document.getElementById('pause-settings').addEventListener('click', () => {
     openSettings('pause');
@@ -749,6 +770,7 @@ function initPauseMenu() {
 
 function pauseGame() {
   Engine.State.paused = true;
+  Engine.pauseAllTimers();
   Engine.dismissChomperMenu();
   GameLog.log('GAME', 'Game paused');
   document.getElementById('pause-menu').classList.remove('hidden');
@@ -757,6 +779,7 @@ function pauseGame() {
 
 function resumeGame() {
   Engine.State.paused = false;
+  Engine.resumeAllTimers();
   GameLog.log('GAME', 'Game resumed');
   document.getElementById('pause-menu').classList.add('hidden');
   SFX.resume();
@@ -784,6 +807,9 @@ function returnToMenu() {
   }
 
   hideScreen('game');
+  hideScreen('docs');
+  const docsEl = document.getElementById('screen-docs');
+  if (docsEl) delete docsEl.dataset.from;
   showScreen('menu');
   SFX.play('snd-menu');
 }
@@ -832,6 +858,11 @@ function showScreen(name) {
   el.style.display = 'flex';
   requestAnimationFrame(() => el.style.opacity = '1');
   el.classList.add('active', 'visible');
+  if (window.Discord) {
+    if (name === 'menu') Discord.menu();
+    else if (name === 'docs') Discord.docs();
+    else if (name === 'end') Discord.bsod();
+  }
 }
 
 function hideScreen(name) {
@@ -965,6 +996,71 @@ function initSettings() {
     localStorage.setItem('pvz_gamemode', modes[next]);
   });
 
+  const discordCb = document.getElementById('settings-discord-cb');
+  const discordHint = document.getElementById('settings-discord-hint');
+  const savedDiscord = localStorage.getItem('pvz_discord') !== 'false';
+  discordCb.checked = savedDiscord;
+  discordCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = savedDiscord ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+
+  function showDiscordHint(text) {
+    if (!discordHint) return;
+    if (text) {
+      discordHint.textContent = text;
+      discordHint.style.display = '';
+    } else {
+      discordHint.style.display = 'none';
+    }
+  }
+
+  if (savedDiscord && window.Discord) {
+    Discord.available().then(res => {
+      if (!res.available) {
+        if (res.reason && res.reason.indexOf('pypresence_missing') === 0) {
+          showDiscordHint(Lang.t('settings.discord.unavailable'));
+        } else {
+          showDiscordHint(Lang.t('settings.discord.disconnected'));
+        }
+      } else {
+        showDiscordHint('');
+      }
+    });
+  }
+
+  discordCb.addEventListener('change', async () => {
+    const on = discordCb.checked;
+    discordCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = on ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
+    localStorage.setItem('pvz_discord', String(on));
+    if (!window.Discord) return;
+    if (on) {
+      const avail = await Discord.available();
+      if (!avail.available && avail.reason && avail.reason.indexOf('pypresence_missing') === 0) {
+        showDiscordHint(Lang.t('settings.discord.unavailable'));
+        discordCb.checked = false;
+        discordCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = Lang.t('settings.toggle.off');
+        localStorage.setItem('pvz_discord', 'false');
+        return;
+      }
+      const res = await Discord.enable();
+      if (res && res.available === false) {
+        showDiscordHint(Lang.t('settings.discord.disconnected'));
+      } else {
+        showDiscordHint('');
+      }
+      const screen = document.querySelector('.game-screen.active, [id^="screen-"].active');
+      const id = screen ? screen.id : '';
+      if (id === 'screen-menu') Discord.menu();
+      else if (id === 'screen-docs') Discord.docs();
+      else if (id === 'screen-game') Discord.game(Engine.State.wave || 1);
+    } else {
+      Discord.disable();
+      showDiscordHint('');
+    }
+  });
+
+  if (!savedDiscord && window.Discord) {
+    Discord.disable();
+  }
+
   const devCb = document.getElementById('settings-devmode-cb');
   const savedDev = localStorage.getItem('pvz_devmode') === 'true';
   devCb.checked = savedDev;
@@ -1090,17 +1186,111 @@ function initSettings() {
   });
 
   const openLogsBtn = document.getElementById('settings-open-logs');
+  const logsModal = document.getElementById('logs-modal');
+  const logsTextarea = document.getElementById('logs-content');
+  const logsStatus = document.getElementById('logs-status');
+  const logsCopyBtn = document.getElementById('logs-copy');
+  const logsSaveBtn = document.getElementById('logs-save');
+  const logsRefreshBtn = document.getElementById('logs-refresh');
+  const logsCloseBtn = document.getElementById('logs-close');
+
+  function setLogsStatus(text) {
+    if (logsStatus) logsStatus.textContent = text || '';
+  }
+
+  async function loadLogContent() {
+    setLogsStatus(Lang.t('logs.loading'));
+    try {
+      if (window.GameLog && GameLog.flush) { try { await GameLog.flush(); } catch (_) {} }
+      const res = await fetch('/api/logs/read');
+      const data = await res.json().catch(() => ({}));
+      const content = (data && data.content) || '';
+      logsTextarea.value = content;
+      logsTextarea.scrollTop = logsTextarea.scrollHeight;
+      setLogsStatus(content ? '' : Lang.t('logs.empty'));
+    } catch (e) {
+      logsTextarea.value = '';
+      setLogsStatus(e.message);
+    }
+  }
+
   if (openLogsBtn) {
     openLogsBtn.addEventListener('click', async () => {
+      logsModal.classList.remove('hidden');
+      await loadLogContent();
+    });
+  }
+
+  if (logsRefreshBtn) {
+    logsRefreshBtn.addEventListener('click', loadLogContent);
+  }
+
+  if (logsCloseBtn) {
+    logsCloseBtn.addEventListener('click', () => logsModal.classList.add('hidden'));
+  }
+  if (logsModal) {
+    logsModal.addEventListener('click', (e) => {
+      if (e.target === logsModal) logsModal.classList.add('hidden');
+    });
+  }
+
+  if (logsCopyBtn) {
+    logsCopyBtn.addEventListener('click', async () => {
+      const text = logsTextarea.value || '';
+      let ok = false;
       try {
-        if (window.GameLog && GameLog.flush) { try { await GameLog.flush(); } catch (_) {} }
-        const res = await fetch('/api/logs/open', { method: 'POST' });
-        const data = await res.json().catch(() => ({}));
-        if (!data.ok) {
-          alert((Lang.t('settings.open_logs.error') || 'Failed to open logs') + (data.error ? ': ' + data.error : ''));
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          ok = true;
         }
+      } catch (_) {}
+      if (!ok) {
+        try {
+          logsTextarea.focus();
+          logsTextarea.select();
+          ok = document.execCommand('copy');
+        } catch (_) {}
+      }
+      setLogsStatus(ok ? Lang.t('logs.copied') : Lang.t('logs.copy_failed'));
+    });
+  }
+
+  if (logsSaveBtn) {
+    logsSaveBtn.addEventListener('click', async () => {
+      const text = logsTextarea.value || '';
+      const isAndroid = /Android/i.test(navigator.userAgent || '');
+      if (isAndroid) {
+        try {
+          const res = await fetch('/api/logs/share', { method: 'POST' });
+          const data = await res.json().catch(() => ({}));
+          if (data.ok) {
+            if (data.path) {
+              setLogsStatus(Lang.t('logs.saved') + ': ' + data.path);
+            } else {
+              setLogsStatus(Lang.t('logs.saved'));
+            }
+          } else {
+            setLogsStatus(Lang.t('logs.save_failed') + (data.error ? ': ' + data.error : ''));
+          }
+        } catch (e) {
+          setLogsStatus(Lang.t('logs.save_failed') + ': ' + e.message);
+        }
+        return;
+      }
+      try {
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.download = `pvz-game-${ts}.log`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        setLogsStatus(Lang.t('logs.saved'));
       } catch (e) {
-        alert((Lang.t('settings.open_logs.error') || 'Failed to open logs') + ': ' + e.message);
+        setLogsStatus(Lang.t('logs.save_failed') + ': ' + e.message);
       }
     });
   }

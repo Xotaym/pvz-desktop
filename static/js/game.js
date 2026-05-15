@@ -115,6 +115,9 @@ let currentWaveZombiesTotal   = 0;
 let waveActive = false;
 let waveCheckInterval = null;
 let waveTimeouts = [];
+let stallLastAliveCount = -1;
+let stallSinceMs = 0;
+const STALL_TIMEOUT_MS = 45000;
 
 function startWave(waveIndex) {
   if (waveIndex >= WAVE_CONFIGS.length) return;
@@ -127,9 +130,11 @@ function startWave(waveIndex) {
   const cfg = WAVE_CONFIGS[waveIndex];
 
   if (cfg.isBossWave) {
+    if (window.Discord) Discord.bossFight();
     startBossWave();
     return;
   }
+  if (window.Discord) Discord.game(S.wave, WAVE_CONFIGS.length);
 
   waveActive = true;
   currentWaveZombiesTotal   = cfg.zombies.length;
@@ -148,12 +153,15 @@ function startWave(waveIndex) {
   });
 
   if (waveCheckInterval) clearInterval(waveCheckInterval);
+  stallLastAliveCount = -1;
+  stallSinceMs = 0;
   waveCheckInterval = setInterval(() => {
     if (S.gameOver) { clearInterval(waveCheckInterval); return; }
     if (!waveActive) { clearInterval(waveCheckInterval); return; }
     if (S.paused) return;
     if (currentWaveZombiesSpawned < currentWaveZombiesTotal) return;
-    if (S.zombies.filter(z => z.alive).length === 0) {
+    const aliveCount = S.zombies.filter(z => z.alive).length;
+    if (aliveCount === 0) {
       GameLog.log('WAVE', `Wave ${waveIndex + 1} complete, all zombies dead`);
       clearInterval(waveCheckInterval);
       waveActive = false;
@@ -163,6 +171,24 @@ function startWave(waveIndex) {
         startWave(waveIndex + 1);
       }
       waveTimeouts.push(setTimeout(tryNextWave, 5000));
+      return;
+    }
+    const now = Date.now();
+    if (aliveCount !== stallLastAliveCount) {
+      stallLastAliveCount = aliveCount;
+      stallSinceMs = now;
+      return;
+    }
+    if (stallSinceMs && now - stallSinceMs >= STALL_TIMEOUT_MS) {
+      GameLog.log('WAVE', `Wave ${waveIndex + 1} stalled (${aliveCount} alive, no progress ${Math.round((now-stallSinceMs)/1000)}s), forcing next wave`);
+      clearInterval(waveCheckInterval);
+      waveActive = false;
+      function tryNextWave() {
+        if (S.gameOver) return;
+        if (S.paused) { waveTimeouts.push(setTimeout(tryNextWave, 500)); return; }
+        startWave(waveIndex + 1);
+      }
+      waveTimeouts.push(setTimeout(tryNextWave, 2000));
     }
   }, 1000);
 }
@@ -307,6 +333,7 @@ function triggerGameOver(zombie, reason) {
   const deathReason = reason || (zombie ? 'zombie_reached' : 'boss');
   GameLog.log('BSOD', `Game over! Reason: ${deathReason}${zombie ? `, zombie #${zombie.id} (${zombie.type})` : ''}`);
   GameLog.flush();
+  if (window.Discord) Discord.bsod(deathReason);
 
   if (zombie && zombie.alive) {
     zombie.el.classList.add('selected');
@@ -446,6 +473,7 @@ let tutorialInteractiveCleanup = null;
 function startTutorial(onComplete) {
   tutorialOnComplete = onComplete || null;
   tutorialStep = 0;
+  if (window.Discord) Discord.tutorial();
   showTutorialStep(tutorialOnComplete);
 
   if (!tutorialHandlersBound) {
@@ -656,6 +684,7 @@ function endTutorial() {
 }
 
 function startSunSpawner() {
+  if (Engine.State.nightMode) return;
   function scheduleFallingSun() {
     Engine.gameTimer('falling_sun', () => {
       Engine.spawnFallingSun();
@@ -718,6 +747,8 @@ function startCustomWave(config) {
   UI.buildPlantBar();
 
   S._customWaveConfigs = config.waves;
+  S._customWaveName = config.name || config._filename || '';
+  S._customWaveNext = config.next_level || null;
   S.maxWaves = config.waves.length;
   S.wave = 0;
   UI.updateWave();
@@ -731,7 +762,12 @@ function startCustomWaveStep(index) {
   if (index >= S._customWaveConfigs.length) {
     GameLog.log('CWAVE', 'All custom waves complete!');
     showWaveBanner('WIN');
+    const currentName = S._customWaveName;
+    const nextFile = S._customWaveNext;
     stopCustomWave();
+    if (nextFile) {
+      setTimeout(() => promptNextLevel(currentName, nextFile), 2500);
+    }
     return;
   }
 
@@ -757,12 +793,15 @@ function startCustomWaveStep(index) {
   });
 
   if (waveCheckInterval) clearInterval(waveCheckInterval);
+  stallLastAliveCount = -1;
+  stallSinceMs = 0;
   waveCheckInterval = setInterval(() => {
     if (S.gameOver || !S._customWave) { clearInterval(waveCheckInterval); return; }
     if (!waveActive) { clearInterval(waveCheckInterval); return; }
     if (S.paused) return;
     if (currentWaveZombiesSpawned < currentWaveZombiesTotal) return;
-    if (S.zombies.filter(z => z.alive).length === 0) {
+    const aliveCount = S.zombies.filter(z => z.alive).length;
+    if (aliveCount === 0) {
       GameLog.log('CWAVE', `Custom wave ${index + 1} complete`);
       clearInterval(waveCheckInterval);
       waveActive = false;
@@ -772,6 +811,24 @@ function startCustomWaveStep(index) {
         startCustomWaveStep(index + 1);
       }
       waveTimeouts.push(setTimeout(tryNext, 5000));
+      return;
+    }
+    const now = Date.now();
+    if (aliveCount !== stallLastAliveCount) {
+      stallLastAliveCount = aliveCount;
+      stallSinceMs = now;
+      return;
+    }
+    if (stallSinceMs && now - stallSinceMs >= STALL_TIMEOUT_MS) {
+      GameLog.log('CWAVE', `Custom wave ${index + 1} stalled (${aliveCount} alive ${Math.round((now-stallSinceMs)/1000)}s), forcing next`);
+      clearInterval(waveCheckInterval);
+      waveActive = false;
+      function tryNext() {
+        if (S.gameOver || !S._customWave) return;
+        if (S.paused) { waveTimeouts.push(setTimeout(tryNext, 500)); return; }
+        startCustomWaveStep(index + 1);
+      }
+      waveTimeouts.push(setTimeout(tryNext, 2000));
     }
   }, 1000);
 }
@@ -780,10 +837,82 @@ function stopCustomWave() {
   cleanupWaves();
   const S = Engine.State;
   [...S.zombies].forEach(z => { if (z.alive) Engine.killZombie(z, true); });
+  for (var r = 0; r < Engine.GRID_ROWS; r++) {
+    for (var c = 0; c < Engine.GRID_COLS; c++) {
+      if (S.plants[r][c]) Engine.removePlant(c, r, true);
+    }
+  }
+  [...(S.peas || [])].forEach(p => {
+    if (p.el) p.el.remove();
+    if (p.mc) p.mc.remove();
+    p.alive = false;
+  });
+  S.peas = [];
+  [...(S.cursorProjectiles || [])].forEach(p => {
+    if (p.el) p.el.remove();
+    if (p.mc) p.mc.remove();
+    p.alive = false;
+  });
+  S.cursorProjectiles = [];
+  [...(S.suns || [])].forEach(s => {
+    if (s.el) s.el.remove();
+    if (s.mc) s.mc.remove();
+    s.collected = true;
+  });
+  S.suns = [];
+  [...(S.droppedFiles || [])].forEach(f => { if (f.el) f.el.remove(); });
+  S.droppedFiles = [];
   S._customWave = false;
   S._customWaveConfigs = null;
   S._customPlants = null;
+  S._customWaveName = null;
+  S._customWaveNext = null;
   UI.buildPlantBar();
+}
+
+function promptNextLevel(currentName, nextFile) {
+  GameLog.log('CWAVE', `Fetching next level: ${nextFile}`);
+  const token = window._pvzToken || '';
+  fetch(`/api/custom_waves?token=${token}`)
+    .then(r => r.json())
+    .then(res => {
+      const list = res.waves || [];
+      const nextCfg = list.find(w => w._filename === nextFile);
+      const modal = document.getElementById('next-level-modal');
+      const titleEl = document.getElementById('next-level-title');
+      const textEl = document.getElementById('next-level-text');
+      const yesBtn = document.getElementById('next-level-yes');
+      const noBtn = document.getElementById('next-level-no');
+      titleEl.textContent = Lang.t('next_level.title');
+      yesBtn.textContent = Lang.t('next_level.yes');
+      noBtn.textContent = Lang.t('next_level.no');
+      if (!nextCfg) {
+        GameLog.log('CWAVE', `Next level "${nextFile}" not found in custom_waves/`);
+        textEl.textContent = Lang.t('next_level.not_found', nextFile);
+        yesBtn.style.display = 'none';
+      } else {
+        const nextName = nextCfg.name || nextFile;
+        textEl.textContent = Lang.t('next_level.text', currentName || '?', nextName);
+        yesBtn.style.display = '';
+      }
+      modal.classList.remove('hidden');
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        yesBtn.onclick = null;
+        noBtn.onclick = null;
+      };
+      yesBtn.onclick = () => {
+        cleanup();
+        if (nextCfg) {
+          GameLog.log('CWAVE', `Starting next level: ${nextFile}`);
+          startCustomWave(nextCfg);
+        }
+      };
+      noBtn.onclick = cleanup;
+    })
+    .catch(err => {
+      GameLog.log('CWAVE', `Failed to fetch next level list: ${err}`);
+    });
 }
 
 window.Game = {

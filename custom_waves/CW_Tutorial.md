@@ -64,6 +64,7 @@ cwave stop          - остановить текущую кастомную в�
 | `nightMode` | нет | false | Ночной режим (солнце-гриб вместо подсолнуха) |
 | `plants` | нет | все | Массив ключей доступных растений |
 | `lawnmowers` | нет | true | Включены ли газонокосилки |
+| `next_level` | нет | - | Имя файла (без `.json`) следующего уровня. После прохождения появится модалка с предложением перейти |
 
 ### Структура волны
 
@@ -116,6 +117,8 @@ cwave stop          - остановить текущую кастомную в�
 | `daisy` | Ромашка | 75 |
 | `cherry` | Вишня | 80 |
 | `avast_nut` | Авасторех | 100 |
+| `torchwall` | Пень-файрволл | 175 |
+| `catmouse` | Кошкомышь | 175 |
 | `logic_mine` | Логическая мина | 25 |
 | `torrent_lantern` | Торент-фонарь | 75 |
 | `basket_chomper` | Корзинокусалка | 75 |
@@ -180,6 +183,7 @@ cwave stop          - stop the current custom wave
 | `nightMode` | no | false | Night mode (sun-shroom replaces sunflower) |
 | `plants` | no | all | Array of available plant keys |
 | `lawnmowers` | no | true | Whether lawnmowers are enabled |
+| `next_level` | no | - | Filename (without `.json`) of the next level. After completion, a modal appears offering to continue |
 
 ### Wave structure
 
@@ -223,6 +227,8 @@ Each wave is an object with a `zombies` array. Waves run sequentially: the next 
 | `daisy` | Daisy | 75 |
 | `cherry` | Cherry | 80 |
 | `avast_nut` | Avast-Nut | 100 |
+| `torchwall` | Torchwall | 175 |
+| `catmouse` | Catmouse | 175 |
 | `logic_mine` | Logic Mine | 25 |
 | `torrent_lantern` | Torrent Lantern | 75 |
 | `basket_chomper` | Basket-Chomper | 75 |

@@ -65,6 +65,8 @@ function updateScale() {
       gw.style.width = '';
       gw.style.height = '';
     }
+    document.documentElement.style.setProperty('--game-scale', '1');
+    document.documentElement.style.setProperty('--game-scale-inv', '1');
     return;
   }
   const mobileHudH = 38;
@@ -82,6 +84,8 @@ function updateScale() {
     gw.style.transform = 'scale(' + _scaleFactor + ')';
     gw.style.transformOrigin = 'top left';
   }
+  document.documentElement.style.setProperty('--game-scale', String(_scaleFactor));
+  document.documentElement.style.setProperty('--game-scale-inv', String(1 / _scaleFactor));
 }
 
 function viewportToGame(cx, cy) {
@@ -180,28 +184,86 @@ const State = {
 
   _xsasHistory: [],
 
+  cursorProjectiles: [],
+  nextCursorProjId: 0,
+
   _timers: {},
 };
 
 function rnd(min, max) { return min + Math.random() * (max - min); }
 function rndInt(min, max) { return Math.floor(rnd(min, max + 1)); }
 
+function _clearNative(rec) {
+  if (!rec) return;
+  if (rec.handle != null) {
+    if (rec.kind === 'interval') clearInterval(rec.handle);
+    else clearTimeout(rec.handle);
+    rec.handle = null;
+  }
+}
+
+function _armTimeout(key, rec) {
+  rec.startedAt = performance.now();
+  rec.handle = setTimeout(() => {
+    if (State.paused || State.gameOver) return;
+    const fn = rec.fn;
+    delete State._timers[key];
+    fn();
+  }, rec.remaining);
+}
+
+function _armInterval(key, rec) {
+  rec.startedAt = performance.now();
+  rec.handle = setInterval(() => {
+    if (State.paused || State.gameOver) return;
+    rec.startedAt = performance.now();
+    rec.fn();
+  }, rec.interval);
+}
+
 function gameTimer(key, fn, delay) {
-  if (State._timers[key]) clearTimeout(State._timers[key]);
-  State._timers[key] = setTimeout(() => {
-    if (!State.paused && !State.gameOver) fn();
-  }, delay);
+  clearTimer(key);
+  const rec = { kind: 'timeout', fn, remaining: delay, startedAt: 0, handle: null };
+  State._timers[key] = rec;
+  if (State.paused) return;
+  _armTimeout(key, rec);
 }
 
 function gameInterval(key, fn, interval) {
-  if (State._timers[key]) clearInterval(State._timers[key]);
-  State._timers[key] = setInterval(() => {
-    if (!State.paused && !State.gameOver) fn();
-  }, interval);
+  clearTimer(key);
+  const rec = { kind: 'interval', fn, interval, startedAt: 0, handle: null };
+  State._timers[key] = rec;
+  if (State.paused) return;
+  _armInterval(key, rec);
+}
+
+function pauseAllTimers() {
+  const now = performance.now();
+  for (const key in State._timers) {
+    const rec = State._timers[key];
+    if (!rec || typeof rec !== 'object' || rec.handle == null) continue;
+    if (rec.kind === 'timeout') {
+      const elapsed = now - rec.startedAt;
+      rec.remaining = Math.max(0, rec.remaining - elapsed);
+    }
+    _clearNative(rec);
+  }
+}
+
+function resumeAllTimers() {
+  for (const key in State._timers) {
+    const rec = State._timers[key];
+    if (!rec || typeof rec !== 'object' || rec.handle != null) continue;
+    if (rec.kind === 'timeout') _armTimeout(key, rec);
+    else _armInterval(key, rec);
+  }
 }
 
 function clearAllTimers() {
-  Object.values(State._timers).forEach(t => { clearTimeout(t); clearInterval(t); });
+  Object.values(State._timers).forEach(rec => {
+    if (rec && typeof rec === 'object') _clearNative(rec);
+    else { clearTimeout(rec); clearInterval(rec); }
+  });
   State._timers = {};
   dismissChomperMenu();
 }
@@ -228,6 +290,58 @@ function isAvastShielded(col, row) {
     }
   }
   return false;
+}
+
+function isFirewallShielded(col, row) {
+  var p = State.plants[row] && State.plants[row][col - 1];
+  if (p && p.type === 'torchwall' && !p.archived && !p.infected) return true;
+  return false;
+}
+
+function findFirewallInRowBefore(row, beforeCol) {
+  if (row < 0 || row >= GRID_ROWS) return null;
+  for (var c = 0; c < beforeCol; c++) {
+    var p = State.plants[row][c];
+    if (p && p.type === 'torchwall' && !p.archived && !p.infected) return p;
+  }
+  return null;
+}
+
+function burnFirewall(fw) {
+  if (!fw || fw.type !== 'torchwall') return;
+  const pos = cellToPixel(fw.col, fw.row);
+  spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#ff4400', 8);
+  if (fw.el) {
+    fw.el.classList.add('torchwall-burst');
+    setTimeout(() => { if (fw.el) fw.el.classList.remove('torchwall-burst'); }, 350);
+  }
+}
+
+function igniteAlongPath(pea) {
+  if (pea._fireIgnited) return;
+  const o = getGridOrigin();
+  const peaCol = Math.floor((pea.x - o.x) / CELL_W);
+  if (peaCol < 0 || peaCol >= GRID_COLS) return;
+  const fw = State.plants[pea.row] && State.plants[pea.row][peaCol];
+  if (fw && fw.type === 'torchwall' && !fw.archived && !fw.infected) {
+    pea._fireIgnited = true;
+    const wasSlow = pea.slow;
+    pea.fire = true;
+    if (pea.el) {
+      const img = pea.el.querySelector('img');
+      if (img) {
+        if (wasSlow) {
+          img.style.filter = 'sepia(1) saturate(3) hue-rotate(-30deg) brightness(0.55)';
+        } else {
+          img.style.filter = 'brightness(0.55) sepia(1) saturate(2.5) hue-rotate(-20deg)';
+        }
+      }
+      pea.el.classList.add(wasSlow ? 'pea-slow-fire' : 'pea-fire');
+    }
+    const label = pea.el && pea.el.querySelector('.entity-file-label');
+    if (label) label.textContent = Lang.t(wasSlow ? 'entity.pea_slow_fire' : 'entity.pea_fire');
+    GameLog.log('FIREWALL', `Pea #${pea.id} ignited by torchwall at [${peaCol},${pea.row}]${wasSlow ? ' (was slow)' : ''}`);
+  }
 }
 
 const Graphics = {
@@ -265,7 +379,6 @@ window.Graphics = Graphics;
 try { Graphics.isLow(); } catch (e) {}
 
 function addFilenameLabel(parent, text, extraClass = '') {
-  if (Graphics.isLow()) return null;
   const label = makeEl('span', `icon-label entity-file-label ${extraClass}`.trim(), parent);
   label.textContent = text;
   return label;
@@ -593,6 +706,19 @@ const PLANTS = {
     isWall: true,
     shieldRadius: 1,
   },
+  torchwall: {
+    name: 'torchwall.png',
+    cost: 175,
+    file: 'torchwall.png',
+    folder: 'plants',
+    shootInterval: null,
+    sunInterval: null,
+    cooldown: 15000,
+    displayName: 'torchwall.png',
+    isFirewall: true,
+    shieldRadius: 1,
+    shieldOnlyForward: true,
+  },
   logic_mine: {
     name: 'mine.jpg',
     cost: 25,
@@ -627,6 +753,20 @@ const PLANTS = {
     displayName: 'torrent-lantern.jpg',
     pairRadius: 1,
     maxOnGrid: 2,
+  },
+  catmouse: {
+    name: 'catmouse.png',
+    cost: 175,
+    file: 'catmouse.png',
+    fileReload: 'catmouse-2.png',
+    folder: 'plants',
+    shootInterval: null,
+    sunInterval: null,
+    cooldown: 7500,
+    displayName: 'catmouse.png',
+    isAimed: true,
+    aimCooldown: 5000,
+    projectileDamage: 2,
   },
 };
 
@@ -981,7 +1121,12 @@ function showChomperContextMenu(col, row, e) {
 
   var pos = cellToPixel(col, row);
   menu.style.left = (pos.x - 10) + 'px';
-  menu.style.top = (pos.y + CELL_H + 2) + 'px';
+  var flipUp = row >= GRID_ROWS - 2;
+  if (flipUp) {
+    menu.style.top = (pos.y - 72) + 'px';
+  } else {
+    menu.style.top = (pos.y + CELL_H + 2) + 'px';
+  }
 
   var onCooldown = p._lastManualEmpty && (performance.now() - p._lastManualEmpty < 5000);
   var canEmpty = p.isFull && !p.archived && !p.infected && !onCooldown;
@@ -1015,7 +1160,11 @@ function showChomperContextMenu(col, row, e) {
 }
 
 function clearTimer(key) {
-  if (State._timers[key]) { clearTimeout(State._timers[key]); clearInterval(State._timers[key]); delete State._timers[key]; }
+  const rec = State._timers[key];
+  if (rec == null) return;
+  if (typeof rec === 'object') _clearNative(rec);
+  else { clearTimeout(rec); clearInterval(rec); }
+  delete State._timers[key];
 }
 
 function scheduleSunflower(plant) {
@@ -1207,8 +1356,12 @@ function scheduleShoot(plant) {
       if (cfg.shootsDouble) shootPea(plant, 1);
     }
     if (cfg.shootsBothWays) {
-      const hasZombieLeft = State.zombies.some(z => z.row === plant.row && z.alive && z.x < cellToPixel(plant.col, plant.row).x);
-      if (hasZombieLeft) shootPea(plant, -1);
+      const plantX = cellToPixel(plant.col, plant.row).x;
+      const hasZombieLeft = State.zombies.some(z => z.row === plant.row && z.alive && z.x < plantX);
+      if (hasZombieLeft) {
+        shootPea(plant, -1);
+        shootPea(plant, -1);
+      }
     }
   }, cfg.shootInterval || 2000);
 }
@@ -1241,6 +1394,291 @@ function shootPea(plant, direction = 1) {
   State.peas.push(pea);
   SFX.play('snd-pea');
 }
+
+function fireCursorProjectile(plant, targetX, targetY) {
+  const cfg = PLANTS[plant.type] || PLANTS.catmouse;
+  const pos = cellToPixel(plant.col, plant.row);
+  const sx = pos.x + CELL_W / 2;
+  const sy = pos.y + CELL_H / 2;
+  const el = makeEl('div', 'cursor-projectile', entitiesLayer());
+  el.style.position = 'absolute';
+  posEl(el, sx - 16, sy - 16);
+  const img = makeEl('img', 'cursor-projectile-img', el);
+  img.src = 'static/img/ui/cursik.png';
+  img.draggable = false;
+  img.onerror = () => { img.remove(); el.classList.add('asset-missing'); };
+  addFilenameLabel(el, Lang.t('entity.cursor_projectile'), 'cursor-proj-file-label');
+  const dx = targetX - sx;
+  const dy = targetY - sy;
+  const dist = Math.max(1, Math.sqrt(dx*dx + dy*dy));
+  const mc = spawnMiniCursik(entitiesLayer());
+  posEl(mc, sx - 6, sy - 12);
+  const arcUp = Math.random() < 0.5 ? -1 : 1;
+  const arcHeight = Math.max(80, Math.min(220, dist * 0.45)) * arcUp;
+  const midX = (sx + targetX) / 2 + (Math.random() - 0.5) * 60;
+  const midY = (sy + targetY) / 2 + arcHeight;
+  const flightMs = Math.max(280, Math.min(900, dist * 1.1));
+  const id = State.nextCursorProjId++;
+  const proj = {
+    id, el, img, mc,
+    x: sx, y: sy,
+    sx, sy, tx: targetX, ty: targetY,
+    cx: midX, cy: midY,
+    t: 0,
+    flightMs,
+    alive: true,
+    damage: cfg.projectileDamage || 2,
+    spawnedAt: performance.now(),
+    _jitterAcc: 0,
+  };
+  State.cursorProjectiles.push(proj);
+}
+
+function updateCursorProjectiles(dt) {
+  if (!State.cursorProjectiles.length) return;
+  const ZOMBIE_HALF_W = 45;
+  const ZOMBIE_HALF_H = 60;
+  const lowGfx = Graphics.isLow();
+  for (let i = State.cursorProjectiles.length - 1; i >= 0; i--) {
+    const p = State.cursorProjectiles[i];
+    if (!p.alive) continue;
+    p.t += dt / p.flightMs;
+    const t = Math.min(1, p.t);
+    const omt = 1 - t;
+    const bx = omt * omt * p.sx + 2 * omt * t * p.cx + t * t * p.tx;
+    const by = omt * omt * p.sy + 2 * omt * t * p.cy + t * t * p.ty;
+    const dxT = 2 * omt * (p.cx - p.sx) + 2 * t * (p.tx - p.cx);
+    const dyT = 2 * omt * (p.cy - p.sy) + 2 * t * (p.ty - p.cy);
+    const tangent = Math.atan2(dyT, dxT) * 180 / Math.PI;
+    const tw = performance.now() * 0.02;
+    const sway = Math.sin(tw + p.id) * 6 + Math.sin(tw * 2.3 + p.id) * 3;
+    const jx = (Math.random() - 0.5) * 8 + sway;
+    const jy = (Math.random() - 0.5) * 8 + Math.cos(tw * 1.7 + p.id) * 5;
+    p.x = bx + jx;
+    p.y = by + jy;
+    posEl(p.el, p.x - 16, p.y - 16);
+    const wobble = (Math.random() - 0.5) * 30;
+    if (p.img) p.img.style.transform = `rotate(${tangent + 45 + wobble}deg)`;
+    if (p.mc) posEl(p.mc, p.x - 4, p.y - 12);
+    p._jitterAcc += dt;
+    if (!lowGfx && p._jitterAcc > 30) {
+      p._jitterAcc = 0;
+      const trail = document.createElement('div');
+      trail.className = 'cursor-trail-bit';
+      trail.style.left = (bx - 4 + (Math.random() - 0.5) * 4) + 'px';
+      trail.style.top = (by - 4 + (Math.random() - 0.5) * 4) + 'px';
+      entitiesLayer().appendChild(trail);
+      setTimeout(() => trail.remove(), 360);
+    }
+    let hit = false;
+    for (let j = 0; j < State.zombies.length; j++) {
+      const z = State.zombies[j];
+      if (!z.alive) continue;
+      const zCy = z.y + 50;
+      if (p.x >= z.x - ZOMBIE_HALF_W && p.x <= z.x + ZOMBIE_HALF_W &&
+          p.y >= zCy - ZOMBIE_HALF_H && p.y <= zCy + ZOMBIE_HALF_H) {
+        damageZombie(z, p.damage);
+        spawnParticles(p.x, p.y, '#ffffff', 6);
+        hit = true;
+        break;
+      }
+    }
+    const reachedEnd = t >= 1;
+    if (hit || reachedEnd) {
+      if (reachedEnd && !hit) spawnParticles(p.x, p.y, '#bfe8ff', 4);
+      p.alive = false;
+      p.el.remove();
+      if (p.mc) p.mc.remove();
+      State.cursorProjectiles.splice(i, 1);
+    }
+  }
+}
+
+function fireAllCatmice(targetX, targetY) {
+  if (State.paused || State.gameOver) return;
+  const now = performance.now();
+  let fired = 0;
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const p = State.plants[r] && State.plants[r][c];
+      if (!p || p.type !== 'catmouse') continue;
+      if (p.archived || p.infected) continue;
+      const cd = (PLANTS.catmouse.aimCooldown || 5000);
+      if (p._reloading) continue;
+      p._reloading = true;
+      fireCursorProjectile(p, targetX, targetY);
+      if (p.el) {
+        p.el.classList.add('catmouse-fire');
+        gameTimer(`catmouse_fire_${p.col}_${p.row}`, () => {
+          if (p.el) p.el.classList.remove('catmouse-fire');
+        }, 250);
+        const imgEl = p.el.querySelector('img.icon-img');
+        if (imgEl) {
+          imgEl.src = `static/img/plants/${PLANTS.catmouse.fileReload || 'catmouse-2.png'}`;
+        }
+        gameTimer(`catmouse_reload_${p.col}_${p.row}`, () => {
+          p._reloading = false;
+          const stillThere = State.plants[p.row] && State.plants[p.row][p.col];
+          if (stillThere === p && p.el) {
+            const im = p.el.querySelector('img.icon-img');
+            if (im) im.src = `static/img/plants/${PLANTS.catmouse.file}`;
+          }
+        }, cd);
+      } else {
+        gameTimer(`catmouse_reload_${p.col}_${p.row}`, () => { p._reloading = false; }, cd);
+      }
+      fired++;
+    }
+  }
+  if (fired > 0) SFX.play('snd-pea');
+  return fired;
+}
+
+var CAT_HOLD_DELAY_MS = 350;
+var CAT_CHARGE_MS = 600;
+var _catAimState = {
+  pressing: false,
+  ringVisible: false,
+  startedAt: 0,
+  appearAt: 0,
+  fireAt: 0,
+  ringEl: null,
+  fillEl: null,
+  viewX: 0, viewY: 0,
+  rafId: 0,
+};
+function _ensureRingEl() {
+  if (_catAimState.ringEl) return;
+  const ring = document.createElement('div');
+  ring.className = 'cat-aim-ring';
+  const track = document.createElement('div');
+  track.className = 'cat-aim-track';
+  ring.appendChild(track);
+  const fill = document.createElement('div');
+  fill.className = 'cat-aim-fill';
+  ring.appendChild(fill);
+  const orbit = document.createElement('div');
+  orbit.className = 'cat-aim-orbit';
+  const mc = document.createElement('img');
+  mc.className = 'cat-aim-cursik';
+  mc.src = 'static/img/ui/cursik.png';
+  mc.draggable = false;
+  orbit.appendChild(mc);
+  ring.appendChild(orbit);
+  document.body.appendChild(ring);
+  _catAimState.ringEl = ring;
+  _catAimState.fillEl = fill;
+  _catAimState.orbitEl = orbit;
+}
+function _positionRing() {
+  if (!_catAimState.ringEl) return;
+  _catAimState.ringEl.style.left = _catAimState.viewX + 'px';
+  _catAimState.ringEl.style.top = _catAimState.viewY + 'px';
+}
+function _showRing() {
+  _ensureRingEl();
+  _positionRing();
+  _catAimState.ringEl.classList.add('visible');
+  _catAimState.ringVisible = true;
+}
+function _hideRing() {
+  if (_catAimState.ringEl) _catAimState.ringEl.classList.remove('visible');
+  _catAimState.ringVisible = false;
+}
+function _catAimTick() {
+  if (!_catAimState.pressing) return;
+  if (State.paused || State.gameOver) {
+    _catAimStop();
+    return;
+  }
+  const now = performance.now();
+  if (!_catAimState.ringVisible && now >= _catAimState.appearAt) _showRing();
+  if (_catAimState.ringVisible) {
+    const total = CAT_CHARGE_MS;
+    const elapsed = Math.min(total, now - _catAimState.appearAt);
+    const pct = Math.max(0, Math.min(1, elapsed / total));
+    if (_catAimState.fillEl) {
+      const deg = Math.round(pct * 360);
+      _catAimState.fillEl.style.setProperty('--fill-deg', deg + 'deg');
+    }
+    if (_catAimState.orbitEl) {
+      const r = 22;
+      const ang = (-90 + pct * 360) * Math.PI / 180;
+      const cx = 22 + Math.cos(ang) * r;
+      const cy = 22 + Math.sin(ang) * r;
+      _catAimState.orbitEl.style.left = (cx - 9) + 'px';
+      _catAimState.orbitEl.style.top = (cy - 9) + 'px';
+    }
+  }
+  if (now >= _catAimState.fireAt) {
+    const gp = viewportToGame(_catAimState.viewX, _catAimState.viewY);
+    fireAllCatmice(gp.x, gp.y);
+    _catAimState.fired = true;
+    _hideRing();
+    return;
+  }
+  _catAimState.rafId = requestAnimationFrame(_catAimTick);
+}
+function _catAimStop() {
+  _catAimState.pressing = false;
+  if (_catAimState.rafId) { cancelAnimationFrame(_catAimState.rafId); _catAimState.rafId = 0; }
+  _hideRing();
+}
+
+function _catmouseOnPointerDown(e) {
+  if (State.paused || State.gameOver) return;
+  if (e.button !== 0) return;
+  if (!State.plants || !State.plants.length) return;
+  let any = false;
+  for (let r = 0; r < GRID_ROWS && !any; r++) {
+    for (let c = 0; c < GRID_COLS && !any; c++) {
+      const p = State.plants[r] && State.plants[r][c];
+      if (p && p.type === 'catmouse' && !p.archived && !p.infected) any = true;
+    }
+  }
+  if (!any) return;
+  const tgt = e.target;
+  if (tgt && tgt.closest && (
+    tgt.closest('.plant-bar') ||
+    tgt.closest('.hud') ||
+    tgt.closest('.pause-menu') ||
+    tgt.closest('#screen-docs') ||
+    tgt.closest('.modal') ||
+    tgt.closest('.credits-modal') ||
+    tgt.closest('.cherry-aoe') ||
+    tgt.closest('.plant-card-drag') ||
+    tgt.closest('.plant-card') ||
+    tgt.closest('.sun-entity')
+  )) return;
+  _catAimState.pressing = true;
+  _catAimState.viewX = e.clientX;
+  _catAimState.viewY = e.clientY;
+  const now = performance.now();
+  _catAimState.startedAt = now;
+  _catAimState.appearAt = now + CAT_HOLD_DELAY_MS;
+  _catAimState.fireAt = _catAimState.appearAt + CAT_CHARGE_MS;
+  if (_catAimState.rafId) cancelAnimationFrame(_catAimState.rafId);
+  _catAimState.rafId = requestAnimationFrame(_catAimTick);
+}
+function _catmouseOnPointerMove(e) {
+  if (!_catAimState.pressing) return;
+  _catAimState.viewX = e.clientX;
+  _catAimState.viewY = e.clientY;
+  if (_catAimState.ringVisible) _positionRing();
+}
+function _catmouseOnPointerUp(e) {
+  if (!_catAimState.pressing) return;
+  _catAimStop();
+}
+function initCatmouseInput() {
+  if (window._catmouseInputBound) return;
+  window._catmouseInputBound = true;
+  document.addEventListener('pointerdown', _catmouseOnPointerDown, true);
+  document.addEventListener('pointermove', _catmouseOnPointerMove, true);
+  document.addEventListener('pointerup', _catmouseOnPointerUp, true);
+  document.addEventListener('pointercancel', _catmouseOnPointerUp, true);
+}
+initCatmouseInput();
 
 const SUN_FALL_STEP_PX = 16;
 const SUN_FALL_STEP_MS = 250;
@@ -1283,7 +1721,26 @@ function spawnSun(x, y, falling = true, value = 25) {
   }
 
   el.addEventListener('click', () => collectSun(sun));
-  setTimeout(() => { if (!sun.collected) removeSun(sun); }, 8000);
+  const despawnKey = `sun_despawn_${id}`;
+  let despawnRemaining = 8000;
+  let despawnLastTick = Date.now();
+  function despawnTick() {
+    if (sun.collected || State.gameOver) return;
+    const now = Date.now();
+    if (State.paused) {
+      despawnLastTick = now;
+      State._timers[despawnKey] = setTimeout(despawnTick, 100);
+      return;
+    }
+    despawnRemaining -= (now - despawnLastTick);
+    despawnLastTick = now;
+    if (despawnRemaining <= 0) {
+      if (!sun.collected) removeSun(sun);
+      return;
+    }
+    State._timers[despawnKey] = setTimeout(despawnTick, Math.min(despawnRemaining, 200));
+  }
+  State._timers[despawnKey] = setTimeout(despawnTick, 200);
 }
 
 function spawnFallingSun() {
@@ -2333,6 +2790,7 @@ function updatePeas(dt) {
       pea.x += PEA_STEP_PX * dir;
       posEl(pea.el, pea.x, pea.peaY);
       if (pea.mc) posEl(pea.mc, pea.x + 10 * dir, pea.peaY - 8);
+      if (!pea._fireIgnited) igniteAlongPath(pea);
     }
 
     let hit = false;
@@ -2346,13 +2804,17 @@ function updatePeas(dt) {
         const zLo = z.x - ZOMBIE_HALF_W;
         const zHi = z.x + ZOMBIE_HALF_W;
         if (sweepHi >= zLo && sweepLo <= zHi) {
-          damageZombie(z, 1);
+          const dmg = (pea.fire && !pea.slow) ? 3 : 1;
+          damageZombie(z, dmg);
           if (pea.slow) {
             z._slowedUntil = now + 3000;
             if (z.el) z.el.style.filter = 'brightness(0.9) sepia(1) hue-rotate(190deg) saturate(3)';
           }
           hit = true;
-          if (!lowGfx) spawnParticles(pea.x, pea.peaY, pea.slow ? '#4488ff' : '#7fff00', 4);
+          if (!lowGfx) {
+            const color = pea.fire ? (pea.slow ? '#8a5a2a' : '#ff8a2c') : (pea.slow ? '#4488ff' : '#7fff00');
+            spawnParticles(pea.x, pea.peaY, color, 4);
+          }
           break;
         }
       }
@@ -2388,6 +2850,7 @@ function gameLoop(ts) {
   if (!State.paused) {
     updateZombies(dt);
     updatePeas(dt);
+    updateCursorProjectiles(dt);
     updateCursikIdle();
     checkPlantsEaten();
     checkWinrarFileCollision();
@@ -2559,8 +3022,11 @@ function fireTrojan(zombie) {
   const arcHeight = Math.max(150, dist * 0.4);
   const duration = 800;
   const startTime = performance.now();
+  const interceptRow = (target.kind === 'plant') ? target.row : zombie.row;
+  let intercepted = false;
 
   function animateArc() {
+    if (intercepted) return;
     const elapsed = performance.now() - startTime;
     const t = Math.min(1, elapsed / duration);
 
@@ -2571,6 +3037,25 @@ function fireTrojan(zombie) {
 
     posEl(proj, x, y);
     posEl(mc, x + 10, y - 8);
+
+    if (t > 0.15 && t < 0.95) {
+      const o = getGridOrigin();
+      const projCol = Math.floor((x - o.x) / CELL_W);
+      if (projCol >= 0 && projCol < GRID_COLS) {
+        const fw = State.plants[interceptRow] && State.plants[interceptRow][projCol];
+        if (fw && fw.type === 'torchwall' && !fw.archived && !fw.infected) {
+          intercepted = true;
+          GameLog.log('FIREWALL', `Torchwall at [${projCol},${interceptRow}] intercepted trojan`);
+          const burstX = x + 16, burstY = y + 16;
+          spawnParticles(burstX, burstY, '#ff6600', 12);
+          spawnParticles(burstX, burstY, '#ffaa00', 8);
+          proj.remove();
+          mc.remove();
+          burnFirewall(fw);
+          return;
+        }
+      }
+    }
 
     if (t < 1) {
       requestAnimationFrame(animateArc);
@@ -2614,6 +3099,14 @@ function infectPlant(col, row) {
     GameLog.log('AVAST', `Trojan blocked by Avast shield at [${col},${row}]`);
     const pos = cellToPixel(col, row);
     spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#00cc44', 8);
+    return;
+  }
+  if (isFirewallShielded(col, row)) {
+    const fw = State.plants[row][col - 1];
+    GameLog.log('FIREWALL', `Trojan absorbed by torchwall at [${col - 1},${row}] (protecting [${col},${row}])`);
+    const pos = cellToPixel(col, row);
+    spawnParticles(pos.x + CELL_W / 2, pos.y + CELL_H / 2, '#ff6600', 10);
+    burnFirewall(fw);
     return;
   }
 
@@ -2860,7 +3353,10 @@ function triggerCherryExplosion(plant) {
   for (const z of State.zombies) {
     if (!z.alive || z.isBoss) continue;
     const zCol = Math.floor((z.x - o.x) / CELL_W);
-    if (Math.abs(zCol - cx) <= radius && Math.abs(z.row - cy) <= radius) {
+    const dCol = Math.abs(zCol - cx);
+    const dRow = Math.abs(z.row - cy);
+    if (dCol <= radius && dRow <= radius) {
+      GameLog.log('CHERRY', `Hit candidate #${z.id} ${z.type} at [${zCol},${z.row}] dCol=${dCol} dRow=${dRow}`);
       inRange.push(z);
     }
   }
@@ -3197,7 +3693,7 @@ window.Engine = {
   removeDroppedFile,
   posEl,
   rnd, rndInt,
-  gameTimer, gameInterval, clearAllTimers, clearTimer,
+  gameTimer, gameInterval, clearAllTimers, clearTimer, pauseAllTimers, resumeAllTimers,
   spawnBungeeZombie,
   dismissChomperMenu, emptyChomper,
   recalcTorrentSlots,
@@ -3205,4 +3701,5 @@ window.Engine = {
   CELL_W, CELL_H, GRID_COLS, GRID_ROWS, HUD_H,
   getScale, updateScale, viewportToGame,
   setShowZombieIds, isShowZombieIds,
+  fireAllCatmice, fireCursorProjectile,
 };

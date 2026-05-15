@@ -126,6 +126,12 @@ try:
 except Exception as _e:
     _updater = None
 
+try:
+    import discord_rpc as _discord_rpc
+except Exception as _e:
+    _discord_rpc = None
+    print(f"[DRPC] module unavailable: {_e}", flush=True)
+
 import re
 
 def _strip_json_comments(text):
@@ -660,6 +666,24 @@ class GameHandler(SimpleHTTPRequestHandler):
                 self._json({"log": ""})
             else:
                 self._json({"log": _updater_mod.tail_log(_updater.log_file, n=50)})
+        elif parsed.path == "/api/logs/read":
+            try:
+                if not LOG_FILE.exists():
+                    self._json({"ok": True, "content": ""})
+                else:
+                    with _log_lock:
+                        with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+                            content = f.read()
+                    self._json({"ok": True, "content": content})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e), "content": ""})
+            return
+        elif parsed.path == "/api/discord/available":
+            if _discord_rpc is None:
+                self._json({"available": False, "reason": "module_unavailable"})
+            else:
+                ok, reason = _discord_rpc.check_available()
+                self._json({"available": ok, "reason": reason, "disabled": _discord_rpc.is_disabled()})
         else:
             super().do_GET()
 
@@ -714,6 +738,21 @@ class GameHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json({"ok": False, "error": str(e)})
             return
+        elif parsed.path == "/api/logs/share":
+            try:
+                result = _share_log_android() or {}
+                resp = {"ok": True}
+                resp.update(result)
+                self._json(resp)
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
+            return
+        elif parsed.path == "/api/heartbeat":
+            global _last_heartbeat, _heartbeat_started
+            _last_heartbeat = time.time()
+            _heartbeat_started = True
+            self._json({"ok": True})
+            return
         elif parsed.path == "/api/exit":
             self._json({"ok": True})
             try:
@@ -722,6 +761,11 @@ class GameHandler(SimpleHTTPRequestHandler):
                 pass
             def _shutdown():
                 time.sleep(0.15)
+                try:
+                    if _discord_rpc is not None:
+                        _discord_rpc.shutdown()
+                except Exception:
+                    pass
                 try:
                     if HAS_WEBVIEW and getattr(webview, "windows", None):
                         for w in list(webview.windows):
@@ -732,6 +776,41 @@ class GameHandler(SimpleHTTPRequestHandler):
                 try: os._exit(0)
                 except Exception: pass
             threading.Thread(target=_shutdown, daemon=True).start()
+            return
+        elif parsed.path == "/api/discord/enable":
+            try:
+                if _discord_rpc is not None:
+                    _discord_rpc.enable()
+                    self._json({"ok": True, "available": _discord_rpc.is_available()})
+                else:
+                    self._json({"ok": False, "error": "module_unavailable", "available": False})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
+            return
+        elif parsed.path == "/api/discord/status":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length) if length > 0 else b"{}"
+            try:
+                data = json.loads(body) if body else {}
+                if _discord_rpc is not None:
+                    _discord_rpc.set_status(
+                        details=data.get("details"),
+                        state=data.get("state"),
+                        reset_timer=bool(data.get("reset_timer", False)),
+                        small_image=data.get("small_image"),
+                        small_text=data.get("small_text"),
+                    )
+                self._json({"ok": True})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
+            return
+        elif parsed.path == "/api/discord/disable":
+            try:
+                if _discord_rpc is not None:
+                    _discord_rpc.disable()
+                self._json({"ok": True})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
             return
         elif parsed.path == "/api/save":
             length = int(self.headers.get("Content-Length", 0))
@@ -769,6 +848,53 @@ def start_server():
     server.serve_forever()
 
 _lock_file = None
+
+_last_heartbeat = time.time()
+_heartbeat_started = False
+_watchdog_started = False
+HEARTBEAT_TIMEOUT = 25.0
+HEARTBEAT_GRACE = 30.0
+
+
+def _force_exit(reason):
+    print(f"[WATCHDOG] forcing exit: {reason}", flush=True)
+    try:
+        if _discord_rpc is not None:
+            _discord_rpc.shutdown()
+    except Exception:
+        pass
+    try:
+        if HAS_WEBVIEW and getattr(webview, "windows", None):
+            for w in list(webview.windows):
+                try: w.destroy()
+                except Exception: pass
+    except Exception:
+        pass
+    try:
+        if _lock_file is not None:
+            _lock_file.close()
+    except Exception:
+        pass
+    try: os._exit(0)
+    except Exception: pass
+
+
+def _start_watchdog():
+    global _watchdog_started
+    if _watchdog_started:
+        return
+    _watchdog_started = True
+    def _loop():
+        time.sleep(HEARTBEAT_GRACE)
+        while True:
+            time.sleep(2)
+            if not _heartbeat_started:
+                continue
+            silent = time.time() - _last_heartbeat
+            if silent > HEARTBEAT_TIMEOUT:
+                _force_exit(f"no heartbeat for {silent:.1f}s (WebView likely crashed)")
+                return
+    threading.Thread(target=_loop, daemon=True).start()
 
 def _open_log_in_system():
     log_path = LOG_FILE
@@ -839,6 +965,92 @@ def _open_log_in_system():
         subprocess.Popen(["open", str(log_path)])
         return
     raise RuntimeError("unsupported platform")
+
+
+def _share_log_android():
+    if not IS_ANDROID:
+        raise RuntimeError("android_only")
+    log_path = LOG_FILE
+    if not log_path.exists():
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("", encoding="utf-8")
+
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    fname = f"pvz-game-{ts}.log"
+
+    try:
+        from jnius import autoclass
+        PA = autoclass('org.kivy.android.PythonActivity')
+        activity = PA.mActivity
+        Intent = autoclass('android.content.Intent')
+        Uri = autoclass('android.net.Uri')
+        File = autoclass('java.io.File')
+
+        target = log_path
+        try:
+            ext = activity.getExternalFilesDir(None)
+            if ext:
+                ext_dir = Path(ext.getAbsolutePath()) / "logs"
+                ext_dir.mkdir(parents=True, exist_ok=True)
+                target = ext_dir / fname
+                import shutil
+                shutil.copyfile(log_path, target)
+        except Exception:
+            pass
+
+        authority = activity.getPackageName() + ".fileprovider"
+        f = File(str(target))
+        try:
+            FileProvider = autoclass('androidx.core.content.FileProvider')
+            uri = FileProvider.getUriForFile(activity, authority, f)
+        except Exception:
+            uri = Uri.fromFile(f)
+
+        intent = Intent(Intent.ACTION_SEND)
+        intent.setType("text/plain")
+        intent.putExtra(Intent.EXTRA_STREAM, uri)
+        intent.putExtra(Intent.EXTRA_SUBJECT, "PvZ Desktop game.log")
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        chooser = Intent.createChooser(intent, "Сохранить лог")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        activity.startActivity(chooser)
+        return {"method": "intent"}
+    except Exception as e:
+        print(f"[LOGS] jnius share failed, using fallback: {e}", flush=True)
+
+    import shutil
+    candidates = []
+    ext_storage = os.environ.get("EXTERNAL_STORAGE")
+    if ext_storage:
+        candidates.append(Path(ext_storage) / "Download")
+    candidates.append(Path("/storage/emulated/0/Download"))
+    candidates.append(Path("/sdcard/Download"))
+    if ext_storage:
+        candidates.append(Path(ext_storage))
+
+    last_err = None
+    for c in candidates:
+        try:
+            c.mkdir(parents=True, exist_ok=True)
+            target = c / fname
+            shutil.copyfile(log_path, target)
+            print(f"[LOGS] saved to {target}", flush=True)
+            return {"method": "copy", "path": str(target)}
+        except Exception as e:
+            last_err = e
+            continue
+
+    try:
+        priv_dir = Path(os.environ.get('ANDROID_PRIVATE', '/tmp')) / "shared"
+        priv_dir.mkdir(parents=True, exist_ok=True)
+        target = priv_dir / fname
+        shutil.copyfile(log_path, target)
+        return {"method": "private", "path": str(target)}
+    except Exception as e:
+        last_err = e
+
+    raise RuntimeError(f"no writable location: {last_err}")
 
 
 _android_perms_event = threading.Event()
@@ -921,6 +1133,12 @@ def main():
 
     print(f"[PvZ Desktop] Port: {PORT}")
 
+    if _discord_rpc is not None and not IS_ANDROID:
+        try:
+            _discord_rpc.start()
+        except Exception as e:
+            print(f"[DRPC] start failed: {e}", flush=True)
+
     if HAS_WEBVIEW:
         server_thread = threading.Thread(target=start_server, daemon=True)
         server_thread.start()
@@ -932,7 +1150,7 @@ def main():
         storage_dir = str(_app_dir / "storage")
         os.makedirs(storage_dir, exist_ok=True)
 
-        webview.create_window(
+        win = webview.create_window(
             "Plants VS Zombies Desktop",
             f"http://127.0.0.1:{PORT}?token={_ACCESS_TOKEN}",
             fullscreen=True,
@@ -940,7 +1158,36 @@ def main():
             frameless=False,
             easy_drag=False,
         )
-        webview.start(private_mode=False, storage_path=storage_dir)
+
+        def _on_closing():
+            print("[PvZ Desktop] window closing, shutting down", flush=True)
+            try:
+                if _discord_rpc is not None:
+                    _discord_rpc.shutdown()
+            except Exception:
+                pass
+            threading.Thread(target=lambda: (time.sleep(0.5), os._exit(0)), daemon=True).start()
+
+        try:
+            win.events.closing += _on_closing
+        except Exception:
+            try:
+                win.closing += _on_closing
+            except Exception as e:
+                print(f"[PvZ Desktop] cannot bind closing handler: {e}", flush=True)
+
+        _start_watchdog()
+
+        try:
+            webview.start(private_mode=False, storage_path=storage_dir)
+        finally:
+            print("[PvZ Desktop] webview.start returned, exiting", flush=True)
+            try:
+                if _discord_rpc is not None:
+                    _discord_rpc.shutdown()
+            except Exception:
+                pass
+            os._exit(0)
 
         sys.exit(0)
     else:

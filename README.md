@@ -94,6 +94,14 @@
 <td align="center"><sub>Двойная огневая мощь</sub></td>
 <td align="center"><sub>Ледяные горошины замедляют зомби</sub></td>
 </tr>
+<tr>
+<td align="center" width="120"><img src="static/img/plants/torchwall.png" width="56" /><br><b>Пень-файрволл</b><br><sub>175 солнц</sub></td>
+<td align="center" width="120"><img src="static/img/plants/catmouse.png" width="56" /><br><b>Кошкомышь</b><br><sub>175 солнц</sub></td>
+</tr>
+<tr>
+<td align="center"><sub>Сбивает трояны, поджигает свои горошины (x3 урон)</sub></td>
+<td align="center"><sub>Зажми ЛКМ - все кошкомыши стреляют курсором туда (2 урон)</sub></td>
+</tr>
 </table>
 
 <br>

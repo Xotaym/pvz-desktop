@@ -116,6 +116,7 @@ if (location.protocol === 'file:') {
       <div class="m-btn-row">
         <button class="m-btn m-btn-square" id="btn-settings" data-i18n-title="menu.settings" title="Настройки" data-icon="⚙"></button>
         <button class="m-btn m-btn-square" id="btn-update" data-i18n-title="menu.update" title="Обновления" data-icon="↻"></button>
+        <button class="m-btn m-btn-rect" id="btn-credits" data-i18n="menu.credits">✦ Авторы</button>
         <button class="m-btn m-btn-square m-btn-exit" id="btn-exit" data-i18n-title="menu.exit" title="Выход" data-icon="✖"></button>
       </div>
     </div>
@@ -229,6 +230,13 @@ if (location.protocol === 'file:') {
           <p data-i18n="docs.plant.avast_nut.desc">Крепкий орех-стена. Нейтрализует трояны в радиусе 3×3 клетки. Блокирует заражение растений вирусами.</p>
         </div>
         <div class="docs-card">
+          <img src="static/img/plants/torchwall.png" alt="Пень-файрволл" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.torchwall.name">Пень-файрволл</h3>
+          <span class="docs-class" style="color:#ff6600" data-i18n="docs.plant.torchwall.class">Антивирус / Поджигатель</span>
+          <p data-i18n-html="docs.plant.torchwall.stats">Стоимость: <b>175 ☀</b> | ХП: <b>3</b></p>
+          <p data-i18n-html="docs.plant.torchwall.desc">Защищает растение прямо за собой от вирусов. Сбивает любой троян, чья траектория проходит над ним. Поджигает свои горошины - те наносят <b>×3 урон</b>. Замедляющие горошины при поджигании становятся коричневыми, сохраняют замедление.</p>
+        </div>
+        <div class="docs-card">
           <img src="static/img/plants/mine.jpg" alt="Логическая мина" onerror="this.src=''">
           <h3 data-i18n="docs.plant.logic_mine.name">Логическая мина</h3>
           <span class="docs-class" style="color:#ff3300" data-i18n="docs.plant.logic_mine.class">Взрывное</span>
@@ -248,6 +256,13 @@ if (location.protocol === 'file:') {
           <span class="docs-class" style="color:#e67e22" data-i18n="docs.plant.basket_chomper.class">Поглощающее</span>
           <p data-i18n-html="docs.plant.basket_chomper.stats">Стоимость: <b>75 ☀</b> | Переваривание: <b>18 сек</b></p>
           <p data-i18n="docs.plant.basket_chomper.desc">Мгновенно съедает зомби, но потом переваривает 18 сек. ПКМ → «Очистить корзину» - ручная очистка. Не ест системный файл у систем-зомби - файл безопасно выпадает.</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/plants/catmouse.png" alt="Кошкомышь" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.catmouse.name">Кошкомышь</h3>
+          <span class="docs-class" style="color:#9b59ff" data-i18n="docs.plant.catmouse.class">Атакующее / Ручное наведение</span>
+          <p data-i18n-html="docs.plant.catmouse.stats">Стоимость: <b>175 ☀</b> | ХП: <b>3</b> | Перезарядка выстрела: <b>5 сек</b></p>
+          <p data-i18n-html="docs.plant.catmouse.desc">Зажми <b>ЛКМ</b> в любой точке поля - каждая кошкомышь выпустит курсор-снаряд в эту точку, нанося <b>2 урон</b> зомби при попадании.</p>
         </div>
       </div>
       <h2 data-i18n="docs.zombies_heading">🧟 Зомби</h2>
@@ -493,6 +508,68 @@ if (location.protocol === 'file:') {
 
 </div>
 
+<div id="credits-modal" class="credits-modal hidden">
+  <div class="credits-card">
+    <div class="credits-spine"></div>
+    <button class="credits-close" id="credits-close" aria-label="Close">✕</button>
+    <header class="credits-head">
+      <span class="credits-eyebrow" data-i18n="credits.eyebrow">— A project by —</span>
+      <h2 class="credits-title">Plants Vs. Zombies <em>Desktop</em></h2>
+      <div class="credits-divider"><span>✦</span></div>
+    </header>
+    <div class="credits-body">
+      <div class="credits-people">
+        <section class="credits-block">
+          <h3 data-i18n="credits.idea">Автор идеи</h3>
+          <p class="credits-name">OVERPACH</p>
+          <p class="credits-role" data-i18n="credits.idea_role">Концепт, направление</p>
+        </section>
+        <section class="credits-block">
+          <h3 data-i18n="credits.dev">Разработка</h3>
+          <p class="credits-name">Xotaym</p>
+          <p class="credits-role" data-i18n="credits.dev_role">Code, design, gameplay</p>
+        </section>
+      </div>
+      <section class="credits-block credits-testers">
+        <h3 data-i18n="credits.testers">Тестировщики</h3>
+        <ul class="credits-tester-list">
+          <li>GенаDip</li>
+          <li>VOshka</li>
+          <li>goosichek</li>
+          <li>Олд pvz</li>
+        </ul>
+        <p class="credits-role" data-i18n="credits.testers_role">Поиск багов, плейтест</p>
+      </section>
+      <section class="credits-block credits-media">
+        <h3 data-i18n="credits.media">Информационная поддержка</h3>
+        <ul class="credits-media-list">
+          <li>
+            <a href="https://t.me/PvZ257" target="_blank" rel="noopener noreferrer" class="credits-link">ТГК «PvZ моды!»</a>
+            <span class="credits-link-handle">t.me/PvZ257</span>
+          </li>
+          <li>
+            <a href="https://t.me/pvz_2_and_heroes" target="_blank" rel="noopener noreferrer" class="credits-link">Plants vs. Zombies</a>
+            <span class="credits-link-handle">t.me/pvz_2_and_heroes</span>
+          </li>
+          <li>
+            <a href="https://t.me/pvzgamesdowload" target="_blank" rel="noopener noreferrer" class="credits-link">ТГК «Пвз игры и моды»</a>
+            <span class="credits-link-handle">t.me/pvzgamesdowload</span>
+          </li>
+        </ul>
+      </section>
+      <section class="credits-block credits-thanks">
+        <h3 data-i18n="credits.thanks">Особая благодарность</h3>
+        <p data-i18n="credits.thanks_text">PopCap Games — за Plants vs. Zombies.</p>
+      </section>
+    </div>
+    <footer class="credits-foot">
+      <span data-i18n="credits.license">CC BY-NC-SA 4.0</span>
+      <span class="credits-dot">·</span>
+      <span data-i18n="credits.year">2026</span>
+    </footer>
+  </div>
+</div>
+
 <div id="screen-end" class="screen bsod-screen">
   <div class="bsod-content">
     <div class="bsod-face" id="bsod-face" style="opacity:0">:(</div>
@@ -579,6 +656,16 @@ if (location.protocol === 'file:') {
     <div class="settings-divider"></div>
 
     <div class="settings-group">
+      <label class="settings-label" style="color:#5865F2" data-i18n="settings.discord">💬 Discord-статус</label>
+      <label class="toggle-3d">
+        <input type="checkbox" id="settings-discord-cb" checked>
+        <span class="toggle-3d-track"><span class="toggle-3d-knob"></span></span>
+        <span class="toggle-3d-label">ВКЛ</span>
+      </label>
+    </div>
+    <p id="settings-discord-hint" class="settings-hint" style="display:none"></p>
+
+    <div class="settings-group">
       <label class="settings-label" style="color:#e74c3c" data-i18n="settings.devmode">🛠 Режим разработчика</label>
       <label class="toggle-3d dev">
         <input type="checkbox" id="settings-devmode-cb">
@@ -595,6 +682,31 @@ if (location.protocol === 'file:') {
     <div class="settings-divider"></div>
     <button class="pause-btn danger" id="settings-reset" data-i18n="settings.reset">🗑 Перезапустить полностью</button>
     <p class="settings-hint" data-i18n="settings.reset.hint">Игра как новая, будто только-что скачал</p>
+  </div>
+</div>
+
+<div id="logs-modal" class="settings-modal hidden">
+  <div class="settings-box" style="max-width:760px; width:90%">
+    <h2 data-i18n="logs.title">📂 Логи игры</h2>
+    <textarea id="logs-content" readonly style="width:100%; height:340px; font-family:monospace; font-size:11px; background:#111; color:#cfcfcf; border:1px solid #333; padding:8px; resize:vertical; white-space:pre; overflow:auto"></textarea>
+    <p id="logs-status" class="settings-hint" style="min-height:1.2em"></p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center">
+      <button class="pause-btn small" id="logs-copy" data-i18n="logs.copy">📋 Скопировать</button>
+      <button class="pause-btn small" id="logs-save" data-i18n="logs.save">💾 Сохранить</button>
+      <button class="pause-btn small" id="logs-refresh" data-i18n="logs.refresh">🔄 Обновить</button>
+    </div>
+    <button class="pause-btn" id="logs-close" data-i18n="settings.done">✔ Готово</button>
+  </div>
+</div>
+
+<div id="next-level-modal" class="confirm-modal hidden">
+  <div class="confirm-box" style="max-width:480px">
+    <h2 id="next-level-title" style="margin:0 0 12px 0"></h2>
+    <p id="next-level-text"></p>
+    <div class="confirm-buttons">
+      <button class="pause-btn" id="next-level-yes"></button>
+      <button class="pause-btn" id="next-level-no" data-i18n="next_level.no">Не сейчас</button>
+    </div>
   </div>
 </div>
 
@@ -684,6 +796,7 @@ if (location.protocol === 'file:') {
 <script src="static/js/game.js"></script>
 <script src="static/js/boot.js"></script>
 <script src="static/js/updater.js"></script>
+<script src="static/js/discord.js"></script>
 <script src="static/js/main.js"></script>
 </body>
 </html>

@@ -1,0 +1,77 @@
+{
+  "name": "Тихая буря",
+  "author": "Xotaym",
+  "description": "Демо-уровень средней сложности. Знакомит с кошкомышью, троянами, шестами и небольшим боссом в финале.",
+  "startSun": 250,
+  "nightMode": false,
+  "plants": [
+    "sunflower",
+    "peashooter",
+    "snow_peashooter",
+    "siamese_peashooter",
+    "folder_magnet",
+    "cherry",
+    "avast_nut",
+    "torchwall",
+    "catmouse",
+    "kaspersky_bean",
+    "logic_mine"
+  ],
+  "lawnmowers": true,
+  "waves": [
+    {
+      "zombies": [
+        { "type": "zombie", "row": 2, "delay": 0 },
+        { "type": "zombie", "row": 4, "delay": 2500 },
+        { "type": "zombie", "row": 3, "delay": 5000 },
+        { "type": "zombie", "row": 1, "delay": 7500 },
+        { "type": "zombie", "row": 5, "delay": 9000 }
+      ]
+    },
+    {
+      "zombies": [
+        { "type": "pole_quiet", "row": 2, "delay": 0 },
+        { "type": "pole_loud", "row": 4, "delay": 1500 },
+        { "type": "zombie", "row": 3, "delay": 3500 },
+        { "type": "hdd_zombie", "row": 1, "delay": 5000 },
+        { "type": "zombie", "row": 5, "delay": 7000 },
+        { "type": "system_zombie", "row": 3, "delay": 9500 }
+      ]
+    },
+    {
+      "zombies": [
+        { "type": "trojan_catapult", "row": 2, "delay": 0 },
+        { "type": "trojan_catapult", "row": 4, "delay": 1000 },
+        { "type": "hdd_zombie", "row": 1, "delay": 3000 },
+        { "type": "hdd_zombie", "row": 5, "delay": 3500 },
+        { "type": "ssd_zombie", "row": 3, "delay": 6500 },
+        { "type": "winrar_zombie", "row": 2, "delay": 9000 }
+      ]
+    },
+    {
+      "zombies": [
+        { "type": "flag_zombie", "row": 3, "delay": 0 },
+        { "type": "pole_quiet", "row": 1, "delay": 800 },
+        { "type": "pole_loud", "row": 5, "delay": 800 },
+        { "type": "zombie", "row": 2, "delay": 2000 },
+        { "type": "zombie", "row": 4, "delay": 2000 },
+        { "type": "excel_zombie", "row": 3, "delay": 5500 },
+        { "type": "bungee", "row": 1, "delay": 8000 },
+        { "type": "bungee", "row": 5, "delay": 8500 },
+        { "type": "trojan_catapult", "row": 3, "delay": 11000 }
+      ]
+    },
+    {
+      "zombies": [
+        { "type": "hdd_zombie", "row": 1, "delay": 0 },
+        { "type": "hdd_zombie", "row": 5, "delay": 0 },
+        { "type": "ssd_zombie", "row": 2, "delay": 1500 },
+        { "type": "ssd_zombie", "row": 4, "delay": 1500 },
+        { "type": "winrar_zombie", "row": 3, "delay": 3500 },
+        { "type": "excel_zombie", "row": 2, "delay": 6000 },
+        { "type": "trojan_catapult", "row": 4, "delay": 7500 },
+        { "type": "bungee", "row": 3, "delay": 10000 }
+      ]
+    }
+  ]
+}

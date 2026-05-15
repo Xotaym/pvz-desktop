@@ -35,11 +35,28 @@ async function init() {
   document.getElementById('btn-play').addEventListener('click', onPlayClicked);
   document.getElementById('btn-docs').addEventListener('click', () => {
     UI.showScreen('docs');
-    UI.hideScreen('menu');
   });
   document.getElementById('btn-settings').addEventListener('click', () => {
     UI.openSettings('menu');
   });
+  const creditsModal = document.getElementById('credits-modal');
+  const btnCredits = document.getElementById('btn-credits');
+  const btnCreditsClose = document.getElementById('credits-close');
+  if (btnCredits && creditsModal) {
+    const openCredits = () => {
+      creditsModal.classList.remove('hidden');
+      if (window.SFX && SFX.duckMusic) SFX.duckMusic(0.15, 0.5);
+    };
+    const closeCredits = () => {
+      creditsModal.classList.add('hidden');
+      if (window.SFX && SFX.unduckMusic) SFX.unduckMusic(0.5);
+    };
+    btnCredits.addEventListener('click', openCredits);
+    if (btnCreditsClose) btnCreditsClose.addEventListener('click', closeCredits);
+    creditsModal.addEventListener('click', (e) => {
+      if (e.target === creditsModal) closeCredits();
+    });
+  }
   var btnExit = document.getElementById('btn-exit');
   var cursikAngry = document.getElementById('menu-cursik-angry');
   if (btnExit) {
@@ -57,8 +74,15 @@ async function init() {
     });
   }
   document.getElementById('btn-docs-close').addEventListener('click', () => {
-    UI.showScreen('menu');
+    const docsEl = document.getElementById('screen-docs');
+    const from = docsEl.dataset.from || 'menu';
     UI.hideScreen('docs');
+    delete docsEl.dataset.from;
+    if (from === 'pause') {
+      document.getElementById('pause-menu').classList.remove('hidden');
+    } else {
+      UI.showScreen('menu');
+    }
   });
   document.getElementById('btn-end-menu').addEventListener('click', () => {
     SFX.stopAll();
@@ -68,9 +92,16 @@ async function init() {
   });
 
   document.getElementById('screen-docs').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('screen-docs') || e.target === document.querySelector('.docs-overlay')) {
-      UI.showScreen('menu');
+    const docsEl = document.getElementById('screen-docs');
+    if (e.target === docsEl || e.target === document.querySelector('.docs-overlay')) {
+      const from = docsEl.dataset.from || 'menu';
       UI.hideScreen('docs');
+      delete docsEl.dataset.from;
+      if (from === 'pause') {
+        document.getElementById('pause-menu').classList.remove('hidden');
+      } else {
+        UI.showScreen('menu');
+      }
     }
   });
 
@@ -647,5 +678,16 @@ document.addEventListener('DOMContentLoaded', () => {
   init().catch(err => {
     if (window.GameLog) GameLog.log('JS_ERROR', 'init: ' + (err && err.message || err));
     console.error(err);
+  });
+
+  function sendHeartbeat() {
+    try {
+      fetch('/api/heartbeat', { method: 'POST', keepalive: true }).catch(() => {});
+    } catch (_) {}
+  }
+  sendHeartbeat();
+  setInterval(sendHeartbeat, 5000);
+  window.addEventListener('beforeunload', () => {
+    try { fetch('/api/exit', { method: 'POST', keepalive: true }); } catch (_) {}
   });
 });

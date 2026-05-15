@@ -7,6 +7,7 @@
   "nightMode": false,
   "plants": ["sunflower", "peashooter", "folder_magnet", "siamese_peashooter", "kaspersky_bean"],
   "lawnmowers": true,
+  "next_level":"level2",
   "waves": [
     {
       "zombies": [
