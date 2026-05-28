@@ -338,20 +338,35 @@ class Updater:
 
     def apply_apk(self, apk_path):
         self._log(f"apply_apk: {apk_path}")
+        apk_str = str(apk_path)
         try:
-            from jnius import autoclass, cast as jcast
-            PA = autoclass('org.kivy.android.PythonActivity')
+            try:
+                import server as _srv
+                _srv._init_jnius()
+                if _srv.HAS_JNIUS:
+                    autoclass = _srv._jnius_classes['autoclass']
+                    PA = _srv._jnius_classes['PythonActivity']
+                else:
+                    raise ImportError("jnius not initialized in server")
+            except Exception:
+                from jnius import autoclass
+                PA = autoclass('org.kivy.android.PythonActivity')
+
             activity = PA.mActivity
+            if activity is None:
+                raise RuntimeError("no current activity")
             Intent = autoclass('android.content.Intent')
             Uri = autoclass('android.net.Uri')
             File = autoclass('java.io.File')
-            FileProvider = autoclass('androidx.core.content.FileProvider')
 
-            f = File(str(apk_path))
-            authority = activity.getPackageName() + ".fileprovider"
+            f = File(apk_str)
+            uri = None
             try:
+                FileProvider = autoclass('androidx.core.content.FileProvider')
+                authority = activity.getPackageName() + ".fileprovider"
                 uri = FileProvider.getUriForFile(activity, authority, f)
-            except Exception:
+            except Exception as e:
+                self._log(f"FileProvider unavailable: {e}, using file:// uri")
                 uri = Uri.fromFile(f)
 
             intent = Intent(Intent.ACTION_VIEW)
@@ -360,8 +375,18 @@ class Updater:
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             activity.startActivity(intent)
         except Exception as e:
-            self._log(f"apply_apk failed: {e}")
-            raise
+            self._log(f"apply_apk jnius failed: {type(e).__name__}: {e}, trying shell fallback")
+            try:
+                subprocess.Popen(
+                    ["am", "start", "-a", "android.intent.action.VIEW",
+                     "-d", "file://" + apk_str,
+                     "-t", "application/vnd.android.package-archive",
+                     "--grant-read-uri-permission"],
+                    close_fds=True,
+                )
+            except Exception as e2:
+                self._log(f"shell fallback failed: {e2}")
+                raise RuntimeError(f"apk install failed: {e}; fallback: {e2}")
 
     def restart(self):
         self._log("restart requested")

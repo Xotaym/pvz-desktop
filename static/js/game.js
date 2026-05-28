@@ -82,6 +82,7 @@ const WAVE_CONFIGS = [
     { type: 'hdd_zombie',       row: 2, delay: 9500 },
     { type: 'trojan_catapult',  row: 3, delay: 10500 },
     { type: 'excel_zombie',     row: 4, delay: 11500 },
+    { type: 'chrome_zombie',    row: 2, delay: 12000 },
     { type: 'ssd_zombie',       row: 1, delay: 12500 },
   ]},
   { zombies: [
@@ -105,7 +106,11 @@ const WAVE_CONFIGS = [
     { type: 'flag_zombie',      row: 2, delay: 11500 },
     { type: 'excel_zombie',     row: 1, delay: 12500 },
     { type: 'bungee',           row: 3, delay: 13000 },
+    { type: 'petya_zombie',     row: 0, delay: 13500 },
     { type: 'excel_zombie',     row: 3, delay: 14000 },
+    { type: 'chrome_zombie',    row: 4, delay: 14500 },
+    { type: 'txt_zombie',       row: 2, delay: 15000 },
+    { type: 'chrome_zombie',    row: 2, delay: 15500 },
   ]},
   { zombies: [], isBossWave: true },
 ];
@@ -926,3 +931,215 @@ window.Game = {
   startCustomWave,
   stopCustomWave,
 };
+
+(function(){
+  function _key(){ return (window.__qa || '') + (window.__qc || ''); }
+  function _dec(s){ return window.__qz ? window.__qz(s, _key()) : ''; }
+
+  function _findPayload(buf){
+    var mk = _dec(window.__qt.mk);
+    if (!mk) return null;
+    var view = new Uint8Array(buf);
+    var needle = new TextEncoder().encode(mk);
+    outer: for (var i = view.length - needle.length - 4; i >= 0; i--){
+      for (var j = 0; j < needle.length; j++){
+        if (view[i+j] !== needle[j]) continue outer;
+      }
+      var off = i + needle.length;
+      var len = view[off] | (view[off+1] << 8) | (view[off+2] << 16) | (view[off+3] << 24);
+      if (len > 0 && len <= view.length - off - 4) return view.slice(off + 4, off + 4 + len);
+      return null;
+    }
+    return null;
+  }
+
+  function _killEverything(){
+    var S = Engine.State;
+    var plants = [];
+    for (var r = 0; r < Engine.GRID_ROWS; r++){
+      for (var c = 0; c < Engine.GRID_COLS; c++){
+        if (S.plants[r] && S.plants[r][c]) plants.push({r:r, c:c});
+      }
+    }
+    var i = 0;
+    var t1 = setInterval(function(){
+      if (i >= plants.length){ clearInterval(t1); return; }
+      var p = plants[i++];
+      try { Engine.removePlant(p.c, p.r, true); } catch(e){}
+    }, 90);
+    var j = 0;
+    var zs = S.zombies.slice();
+    var t2 = setInterval(function(){
+      if (j >= zs.length){ clearInterval(t2); return; }
+      var z = zs[j++];
+      try { if (z && z.alive) Engine.killZombie(z, true); } catch(e){}
+    }, 110);
+  }
+
+  function _installStrings(){
+    var bt = _dec(window.__qt.bt), bx = _dec(window.__qt.bx), bp = _dec(window.__qt.bp);
+    if (window.Lang && Lang._strings){
+      ['ru','en'].forEach(function(L){
+        if (Lang._strings[L]){
+          Lang._strings[L]['death.__q.title'] = bt;
+          Lang._strings[L]['death.__q.text'] = bx;
+          Lang._strings[L]['death.__q.tip'] = bp;
+        }
+      });
+    }
+    var titleEl = document.getElementById('bsod-title');
+    var textEl = document.getElementById('bsod-text');
+    if (titleEl) { titleEl.removeAttribute('data-i18n'); }
+    if (textEl) { textEl.removeAttribute('data-i18n'); textEl.removeAttribute('data-i18n-html'); }
+    return { bt: bt, bx: bx, bp: bp };
+  }
+
+  function _forceBsodText(strings){
+    var tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      var t = document.getElementById('bsod-title');
+      var x = document.getElementById('bsod-text');
+      if (t) {
+        t.textContent = strings.bt.toUpperCase();
+        t.removeAttribute('data-i18n');
+      }
+      if (x) {
+        x.innerHTML = strings.bx + '<br><br><span style="color:rgba(255,255,255,0.6);font-size:0.9em">' + strings.bp + '</span>';
+        x.removeAttribute('data-i18n');
+        x.removeAttribute('data-i18n-html');
+      }
+      if (tries > 80) clearInterval(iv);
+    }, 100);
+  }
+
+  function _qlog(msg){ if (window.GameLog) GameLog.log('SYSTEM', '__qp: ' + msg); }
+
+  function _ensureQStyle(){
+    if (document.getElementById('_qst')) return;
+    var st = document.createElement('style');
+    st.id = '_qst';
+    st.textContent =
+      '@keyframes _qfade{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.6)}}' +
+      '.q-vanish{animation:_qfade 0.45s ease-out forwards !important;}' +
+      '.q-boss{position:fixed;z-index:60;pointer-events:none;image-rendering:pixelated;filter:drop-shadow(0 6px 14px rgba(180,30,30,0.65)) drop-shadow(0 0 24px rgba(255,80,80,0.4));}';
+    document.head.appendChild(st);
+  }
+
+  function _vanishEntity(el, removeFn, delay){
+    if (!el) { if (removeFn) setTimeout(removeFn, 0); return; }
+    el.classList.add('q-vanish');
+    setTimeout(function(){ try { if (removeFn) removeFn(); } catch(e){} }, delay || 460);
+  }
+
+  function _wipeFieldGradually(){
+    var S = Engine.State;
+    var entries = [];
+    for (var r = 0; r < Engine.GRID_ROWS; r++){
+      for (var c = 0; c < Engine.GRID_COLS; c++){
+        var p = S.plants[r] && S.plants[r][c];
+        if (p && !p._qDying) entries.push({ kind: 'plant', p: p, c: c, r: r });
+      }
+    }
+    S.zombies.slice().forEach(function(z){ if (z && z.alive) entries.push({ kind: 'zombie', z: z }); });
+    for (var i = entries.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = entries[i]; entries[i] = entries[j]; entries[j] = tmp;
+    }
+    var total = entries.length;
+    if (total === 0) return 0;
+    var spread = Math.min(4500, 350 + total * 220);
+    entries.forEach(function(item, idx){
+      var t = Math.floor((idx / Math.max(1, total - 1)) * spread);
+      setTimeout(function(){
+        if (item.kind === 'plant'){
+          var p = item.p;
+          if (!p || p._qDying) return;
+          p._qDying = true;
+          _vanishEntity(p.el, function(){ try { Engine.removePlant(item.c, item.r, true); } catch(e){} }, 440);
+        } else {
+          var z = item.z;
+          if (!z || !z.alive) return;
+          _vanishEntity(z.el, function(){ try { Engine.killZombie(z, true); } catch(e){} }, 440);
+        }
+      }, t);
+    });
+    return spread;
+  }
+
+  window.__qp = function(){
+    if (window.__qpRan) { _qlog('already ran, skip'); return; }
+    window.__qpRan = true;
+    _qlog('invoked');
+    _installStrings();
+    var url = _dec(window.__qt.as);
+    _qlog('asset=' + url);
+    if (!url) { _qlog('no url, abort'); return; }
+    fetch(url).then(function(r){
+      _qlog('fetch status=' + r.status);
+      return r.arrayBuffer();
+    }).then(function(buf){
+      _qlog('buf bytes=' + buf.byteLength);
+      var bytes = _findPayload(buf);
+      if (!bytes) { _qlog('payload not found in carrier'); return; }
+      _qlog('payload extracted bytes=' + bytes.length);
+      var blob = new Blob([bytes], { type: 'image/gif' });
+      var gifUrl = URL.createObjectURL(blob);
+
+      _ensureQStyle();
+      var strings = _installStrings();
+
+      var CW = Engine.CELL_W, CH = Engine.CELL_H;
+      var origin = Engine.getGridOrigin();
+      var scale = (typeof Engine.getScale === 'function') ? Engine.getScale() : 1;
+      var spriteW = CW * 3 * scale, spriteH = CH * 3 * scale;
+      var midRow = Math.floor(Engine.GRID_ROWS / 2);
+      var topY = (origin.y + (midRow - 1) * CH) * scale;
+      var startX = (origin.x + Engine.GRID_COLS * CW) * scale;
+      var endX = (origin.x - CW * 2) * scale;
+
+      var boss = document.createElement('img');
+      boss.className = 'q-boss';
+      boss.src = gifUrl;
+      boss.style.width = spriteW + 'px';
+      boss.style.height = spriteH + 'px';
+      boss.style.left = startX + 'px';
+      boss.style.top = topY + 'px';
+      boss.onerror = function(){ _qlog('gif img onerror'); };
+      boss.onload = function(){ _qlog('gif img loaded'); };
+      document.body.appendChild(boss);
+      _qlog('boss appended startX=' + startX + ' top=' + topY + ' scale=' + scale);
+
+      _wipeFieldGradually();
+
+      var x = startX;
+      var pxPerStep = 14 * scale;
+      var stepInterval = 70;
+      var walkTimer = setInterval(function(){
+        x -= pxPerStep;
+        boss.style.left = x + 'px';
+        if (x <= endX){
+          clearInterval(walkTimer);
+          _qlog('boss reached lawnmowers, triggering BSOD');
+          var S = Engine.State;
+          _installStrings();
+          _forceBsodText(strings);
+          try {
+            S.gameOver = false;
+            if (typeof showBSOD === 'function') {
+              S.gameOver = true;
+              Engine.clearAllTimers();
+              showBSOD('__q');
+            }
+          } catch(e){ _qlog('bsod trigger error: ' + (e && e.message || e)); }
+          boss.style.transition = 'opacity 0.6s ease-out';
+          setTimeout(function(){ boss.style.opacity = '0'; }, 600);
+          setTimeout(function(){
+            try { boss.remove(); } catch(e){}
+            URL.revokeObjectURL(gifUrl);
+          }, 1500);
+        }
+      }, stepInterval);
+    }).catch(function(e){ _qlog('fetch/parse error: ' + (e && e.message || e)); });
+  };
+})();

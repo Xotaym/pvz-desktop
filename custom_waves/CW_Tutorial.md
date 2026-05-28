@@ -100,6 +100,9 @@ cwave stop          - остановить текущую кастомную в�
 | `pole_loud` | Шест-громкий | Повышает громкость при приближении |
 | `pole_quiet` | Шест-тихий | Понижает громкость при приближении |
 | `excel_zombie` | Excel-зомби | Excel-щит, замедляется от урона |
+| `petya_zombie` | Зомби-Петя | Качает Petya, BSOD при 100% |
+| `chrome_zombie` | Chrome-зомби | Призывает рандомного зомби на соседнюю клетку |
+| `txt_zombie` | txt-зомби | Каждые 2 клетки правит характеристику случайного типа зомби (до конца уровня) |
 | `your_death` | Ваша смерть | Босс |
 
 ### Ключи растений
@@ -119,6 +122,7 @@ cwave stop          - остановить текущую кастомную в�
 | `avast_nut` | Авасторех | 100 |
 | `torchwall` | Пень-файрволл | 175 |
 | `catmouse` | Кошкомышь | 175 |
+| `pirate_mushroom` | Пиратский гриб | 15 |
 | `logic_mine` | Логическая мина | 25 |
 | `torrent_lantern` | Торент-фонарь | 75 |
 | `basket_chomper` | Корзинокусалка | 75 |
@@ -210,6 +214,9 @@ Each wave is an object with a `zombies` array. Waves run sequentially: the next 
 | `pole_loud` | Loud Pole | Increases volume as it approaches |
 | `pole_quiet` | Quiet Pole | Decreases volume as it approaches |
 | `excel_zombie` | Excel Zombie | Excel shield, slows from damage |
+| `petya_zombie` | Petya-Zombie | Downloads Petya, BSOD at 100% |
+| `chrome_zombie` | Chrome Zombie | Summons a random zombie onto an adjacent cell |
+| `txt_zombie` | txt Zombie | Every 2 cells edits a random zombie type's stat (persists for the level) |
 | `your_death` | Your Death | Boss |
 
 ### Plant keys
@@ -229,6 +236,7 @@ Each wave is an object with a `zombies` array. Waves run sequentially: the next 
 | `avast_nut` | Avast-Nut | 100 |
 | `torchwall` | Torchwall | 175 |
 | `catmouse` | Catmouse | 175 |
+| `pirate_mushroom` | Pirate Mushroom | 15 |
 | `logic_mine` | Logic Mine | 25 |
 | `torrent_lantern` | Torrent Lantern | 75 |
 | `basket_chomper` | Basket-Chomper | 75 |

@@ -102,6 +102,14 @@
 <td align="center"><sub>Сбивает трояны, поджигает свои горошины (x3 урон)</sub></td>
 <td align="center"><sub>Зажми ЛКМ - все кошкомыши стреляют курсором туда (2 урон)</sub></td>
 </tr>
+<tr>
+<td align="center" width="120"><img src="static/img/plants/pirate-mushroom.jpg" width="56" /><br><b>Пиратский гриб</b><br><sub>15 солнц</sub></td>
+<td></td>
+</tr>
+<tr>
+<td align="center"><sub>Сажается с вирусом, стреляет на 3 клетки. Живёт 30 сек, потом высвобождает зомби. В торрент-зоне x2 урон</sub></td>
+<td></td>
+</tr>
 </table>
 
 <br>
@@ -140,6 +148,18 @@
 <td align="center"><sub>Повышает громкость при приближении</sub></td>
 <td align="center"><sub>Понижает громкость при приближении</sub></td>
 <td align="center"><sub>Excel-щит. Замедляется от урона, может развернуться!</sub></td>
+</tr>
+<tr>
+<td align="center" width="120"><img src="static/img/zombies/zombie-petya.png" width="56" /><br><b>Зомби-Петя</b></td>
+<td align="center" width="120"><img src="static/img/zombies/chrome-zombie.png" width="56" /><br><b>Chrome-зомби</b></td>
+<td align="center" width="120"><img src="static/img/zombies/txt-zombie.png" width="56" /><br><b>txt-зомби</b></td>
+<td></td>
+</tr>
+<tr>
+<td align="center"><sub>Качает вирус Petya. Прогресс в правом верхнем углу. 100% = BSOD</sub></td>
+<td align="center"><sub>Ищет в Chrome 'Зомби', призывает рандомного на соседнюю клетку</sub></td>
+<td align="center"><sub>Каждые 2 клетки правит характеристику случайного типа зомби (до конца уровня)</sub></td>
+<td></td>
 </tr>
 </table>
 

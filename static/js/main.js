@@ -36,6 +36,27 @@ async function init() {
   document.getElementById('btn-docs').addEventListener('click', () => {
     UI.showScreen('docs');
   });
+
+  const btnEditor = document.getElementById('btn-editor');
+  if (btnEditor) {
+    const refreshEditorVisibility = () => {
+      const on = localStorage.getItem('pvz_devmode') === 'true';
+      btnEditor.classList.toggle('hidden', !on);
+    };
+    refreshEditorVisibility();
+    btnEditor.addEventListener('click', () => {
+      console.log('[btn-editor] click; WaveEditor=', !!window.WaveEditor, 'devmode=', localStorage.getItem('pvz_devmode'));
+      if (window.WaveEditor) {
+        WaveEditor.open();
+      } else {
+        console.error('[btn-editor] WaveEditor module not loaded');
+      }
+    });
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'pvz_devmode') refreshEditorVisibility();
+    });
+    window._refreshEditorBtn = refreshEditorVisibility;
+  }
   document.getElementById('btn-settings').addEventListener('click', () => {
     UI.openSettings('menu');
   });
@@ -319,6 +340,7 @@ function initDevPanel() {
     document.addEventListener('keydown', (e) => {
       if (e.key === '`' || e.key === '~' || e.code === 'Backquote') {
         if (localStorage.getItem('pvz_devmode') !== 'true') return;
+        if (document.body.classList.contains('editor-mode')) return;
         toggleDevPanel(panel);
       }
     });
@@ -572,7 +594,7 @@ function executeDevCommand(input) {
       if (!type || !rowStr) { consolePrint(Lang.t('dev.cmd.spawn_usage'), 'error'); break; }
       const row = parseInt(rowStr) - 1;
       if (row < 0 || row > 4) { consolePrint(Lang.t('dev.cmd.row_range'), 'error'); break; }
-      const validTypes = ['zombie','system_zombie','hdd_zombie','ssd_zombie','winrar_zombie','trojan_catapult','your_death'];
+      const validTypes = ['zombie','system_zombie','hdd_zombie','ssd_zombie','winrar_zombie','trojan_catapult','flag_zombie','pole_loud','pole_quiet','excel_zombie','petya_zombie','chrome_zombie','txt_zombie','bungee','your_death'];
       if (!validTypes.includes(type)) {
         consolePrint(Lang.t('dev.cmd.types', validTypes.join(', ')), 'error');
         break;

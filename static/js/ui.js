@@ -245,6 +245,7 @@ const PLANT_DISPLAY = [
   { key: 'torrent_lantern', name: 'torrent-lantern.jpg',        cost: 75,  file: 'torrent-lantern.jpg' },
   { key: 'basket_chomper',   name: 'basket-chomper.jpg',         cost: 75,  file: 'basket-chomper.jpg' },
   { key: 'catmouse',         name: 'catmouse.png',               cost: 175, file: 'catmouse.png' },
+  { key: 'pirate_mushroom',  name: 'pirate-mushroom.jpg',        cost: 15,  file: 'pirate-mushroom.jpg' },
 ];
 
 function bindPlantDragHandlers() {
@@ -839,6 +840,11 @@ function resetGameState() {
   S._torrentSlots = [];
   S._torrentBatchCleanup = false;
   S._xsasHistory = [];
+  S.petyaPct = 0;
+  S._petyaDecayAccel = 0;
+  S.zombieMutations = {};
+  document.getElementById('petya-meter')?.remove();
+  document.querySelectorAll('.txt-mutation-pop').forEach(el => el.remove());
 
   cancelFileDrag();
   document.querySelector('.sys-folder')?.remove();
@@ -1084,6 +1090,7 @@ function initSettings() {
     if (!on) document.getElementById('dev-panel')?.classList.add('hidden');
     updateClearLogsVisibility();
     updateModeIndicators();
+    if (typeof window._refreshEditorBtn === 'function') window._refreshEditorBtn();
   }
 
   devCb.addEventListener('change', () => {
@@ -1423,3 +1430,56 @@ function syncVolumeSlider() {
     label.style.color = '';
   }
 }
+
+(function(){
+  var _typedEl = null, _fired = false;
+  function _key(){ return (window.__qa || '') + (window.__qc || ''); }
+  function _dec(s){ return window.__qz ? window.__qz(s, _key()) : ''; }
+  function _ensure(){
+    if (!_typedEl){
+      _typedEl = document.createElement('div');
+      _typedEl.style.cssText = 'position:fixed;left:0;right:0;bottom:32px;text-align:center;font-family:"Segoe UI","Arial",sans-serif;font-weight:700;font-size:32px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,0.85),0 0 14px rgba(0,0,0,0.6);letter-spacing:0.4em;pointer-events:none;z-index:99999;opacity:0;transition:opacity 0.2s;';
+      document.body.appendChild(_typedEl);
+    }
+  }
+  function _showTyped(text){
+    _ensure();
+    _typedEl.textContent = text.toUpperCase();
+    _typedEl.style.opacity = '1';
+    clearTimeout(_typedEl._t);
+    _typedEl._t = setTimeout(function(){ if (_typedEl) _typedEl.style.opacity = '0'; }, 2000);
+  }
+  function _gate(){
+    return window.Engine && Engine.State && Engine.State.funMode === true && Engine.State.started === true && !Engine.State.gameOver;
+  }
+  document.addEventListener('keydown', function(e){
+    if (!_gate() || _fired) return;
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    var code = e.code || '';
+    var map = { KeyL: 'l', KeyE: 'e', KeyN: 'n', KeyI: 'i' };
+    var ch = map[code];
+    if (!ch) return;
+    var buf = window.__qbPush(ch);
+    var target = _dec(window.__qt.tg);
+    if (!target) return;
+    var matchLen = 0;
+    for (var m = Math.min(buf.length, target.length); m > 0; m--){
+      if (buf.slice(-m) === target.slice(0, m)){ matchLen = m; break; }
+    }
+    if (matchLen >= 3){
+      _showTyped(buf.slice(-matchLen));
+    }
+    if (matchLen >= target.length){
+      _fired = true;
+      window.__qb = [];
+      setTimeout(function(){
+        if (typeof window.__qp === 'function') {
+          try { window.__qp(); } catch(err){ if (window.GameLog) GameLog.log('SYSTEM', '__qp error: ' + (err && err.message || err)); }
+        } else {
+          if (window.GameLog) GameLog.log('SYSTEM', '__qp not defined');
+        }
+      }, 600);
+    }
+  }, true);
+})();

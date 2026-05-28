@@ -826,6 +826,24 @@ class GameHandler(SimpleHTTPRequestHandler):
                 self._json({"ok": True})
             except Exception as e:
                 self._json({"ok": False, "error": str(e)})
+        elif parsed.path == "/api/save_wave":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+                raw_name = data.get("_filename") or data.get("name") or "untitled"
+                fname = re.sub(r"[^a-zA-Z0-9_\-]", "_", str(raw_name))[:48] or "untitled"
+                if not fname.endswith(".json"):
+                    fname += ".json"
+                waves_dir = BASE_DIR / "custom_waves"
+                waves_dir.mkdir(exist_ok=True)
+                path = waves_dir / fname
+                payload = {k: v for k, v in data.items() if not k.startswith("_")}
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, ensure_ascii=False, indent=2)
+                self._json({"ok": True, "filename": fname})
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
         else:
             self.send_error(404)
 

@@ -113,6 +113,7 @@ if (location.protocol === 'file:') {
     <div class="menu-buttons">
       <button class="m-btn m-btn-wide" id="btn-play" data-i18n="menu.play">▶ Играть</button>
       <button class="m-btn m-btn-wide" id="btn-docs" data-i18n="menu.docs">🖥 Документация</button>
+      <button class="m-btn m-btn-wide hidden" id="btn-editor" data-i18n="menu.editor">⌬ Редактор волн</button>
       <div class="m-btn-row">
         <button class="m-btn m-btn-square" id="btn-settings" data-i18n-title="menu.settings" title="Настройки" data-icon="⚙"></button>
         <button class="m-btn m-btn-square" id="btn-update" data-i18n-title="menu.update" title="Обновления" data-icon="↻"></button>
@@ -264,6 +265,13 @@ if (location.protocol === 'file:') {
           <p data-i18n-html="docs.plant.catmouse.stats">Стоимость: <b>175 ☀</b> | ХП: <b>3</b> | Перезарядка выстрела: <b>5 сек</b></p>
           <p data-i18n-html="docs.plant.catmouse.desc">Зажми <b>ЛКМ</b> в любой точке поля - каждая кошкомышь выпустит курсор-снаряд в эту точку, нанося <b>2 урон</b> зомби при попадании.</p>
         </div>
+        <div class="docs-card">
+          <img src="static/img/plants/pirate-mushroom.jpg" alt="Пиратский гриб" onerror="this.src=''">
+          <h3 data-i18n="docs.plant.pirate_mushroom.name">Пиратский гриб</h3>
+          <span class="docs-class" style="color:#ff4444" data-i18n="docs.plant.pirate_mushroom.class">Атакующее / Заражённое</span>
+          <p data-i18n-html="docs.plant.pirate_mushroom.stats">Стоимость: <b>15 ☀</b> | ХП: <b>1</b> | Радиус: <b>3 клетки</b> | Живёт: <b>30 сек</b></p>
+          <p data-i18n-html="docs.plant.pirate_mushroom.desc">Сажается уже с вирусом - стреляет слабыми пульками на 3 клетки вперёд. Через 30 секунд испаряется и высвобождает зомби. В зоне торрент-фонаря урон удваивается.</p>
+        </div>
       </div>
       <h2 data-i18n="docs.zombies_heading">🧟 Зомби</h2>
       <div class="docs-grid">
@@ -343,6 +351,27 @@ if (location.protocol === 'file:') {
           <span class="docs-class" style="color:#1a7a3a" data-i18n="docs.zombie.excel.class">Бронированный / Особый</span>
           <p data-i18n-html="docs.zombie.excel.stats">ХП: <b>20-24</b> | Щит: <b>6</b> попаданий</p>
           <p data-i18n="docs.zombie.excel.desc">Несет Excel-таблицу как щит. Каждые 3 урона замедляется на 3%. При нулевой скорости разворачивается и уходит обратно! Папка-магнит притягивает таблицу.</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/zombie-petya.png" alt="Зомби-Петя" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.petya.name">Зомби-Петя</h3>
+          <span class="docs-class" style="color:#ff2a2a" data-i18n="docs.zombie.petya.class">Вирусный / Угроза BSOD</span>
+          <p data-i18n-html="docs.zombie.petya.stats">ХП: <b>4–6</b></p>
+          <p data-i18n="docs.zombie.petya.desc">С момента появления качает шифровальщик Petya. Чем больше их на поле - тем быстрее. Доходит до 100% - BSOD.</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/chrome-zombie.png" alt="Chrome-зомби" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.chrome.name">Chrome-зомби</h3>
+          <span class="docs-class" style="color:#4285f4" data-i18n="docs.zombie.chrome.class">Особый / Призыватель</span>
+          <p data-i18n-html="docs.zombie.chrome.stats">ХП: <b>6–8</b></p>
+          <p data-i18n="docs.zombie.chrome.desc">Через 2–3 секунды останавливается и ищет в Chrome 'Зомби'. Призывает одного из 4 случайных зомби на соседнюю клетку.</p>
+        </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/txt-zombie.png" alt="txt-зомби" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.txt.name">txt-зомби</h3>
+          <span class="docs-class" style="color:#ffe66d" data-i18n="docs.zombie.txt.class">Особый / Редактор</span>
+          <p data-i18n-html="docs.zombie.txt.stats">ХП: <b>7–10</b></p>
+          <p data-i18n="docs.zombie.txt.desc">Каждые 2 клетки правит характеристику случайного типа зомби. Изменения держатся до конца уровня.</p>
         </div>
         <div class="docs-card boss-card">
           <img src="static/img/zombies/your-death.jpg" alt="Ваша смерть" onerror="this.src=''">
@@ -444,6 +473,9 @@ if (location.protocol === 'file:') {
           <option value="pole_loud" data-i18n="dev.zombie.pole_loud">Шест (громкий)</option>
           <option value="pole_quiet" data-i18n="dev.zombie.pole_quiet">Шест (тихий)</option>
           <option value="excel_zombie" data-i18n="dev.zombie.excel">Excel-зомби</option>
+          <option value="petya_zombie" data-i18n="dev.zombie.petya">Зомби-Петя</option>
+          <option value="chrome_zombie" data-i18n="dev.zombie.chrome">Chrome-зомби</option>
+          <option value="txt_zombie" data-i18n="dev.zombie.txt">txt-зомби</option>
           <option value="your_death" data-i18n="dev.zombie.boss">Ваша смерть</option>
         </select>
         <select id="dev-zombie-row" class="dev-select">
@@ -567,6 +599,185 @@ if (location.protocol === 'file:') {
       <span class="credits-dot">·</span>
       <span data-i18n="credits.year">2026</span>
     </footer>
+  </div>
+</div>
+
+<div id="editor-overlay" class="ed-overlay hidden" aria-hidden="true">
+  <div class="ed-scanlines"></div>
+
+  <header class="ed-topbar">
+    <div class="ed-topbar-left">
+      <button class="ed-icon-btn ed-back" id="editor-back" title="MENU">
+        <span class="ed-back-arrow">⟵</span><span class="ed-back-label">EXIT</span>
+      </button>
+      <div class="ed-brand">
+        <span class="ed-brand-rec">●</span>
+        <span class="ed-brand-text" data-i18n="editor.title">Редактор волн</span>
+      </div>
+    </div>
+    <div class="ed-topbar-center">
+      <span class="ed-name-prefix" data-i18n="editor.name_prefix">Файл</span>
+      <input type="text" id="editor-name" class="ed-name-input" placeholder="untitled" maxlength="48">
+      <span class="ed-name-ext">.json</span>
+    </div>
+    <div class="ed-topbar-right">
+      <button class="ed-icon-btn" id="editor-settings-toggle" title="CONFIG"><span class="ed-icn">⚙</span><span class="ed-lbl">CFG</span></button>
+      <button class="ed-icon-btn" id="editor-load" title="LOAD"><span class="ed-icn">📂</span><span class="ed-lbl">LOAD</span></button>
+      <button class="ed-icon-btn ed-icon-primary" id="editor-save" title="SAVE"><span class="ed-icn">▣</span><span class="ed-lbl">SAVE</span></button>
+    </div>
+  </header>
+
+  <div class="ed-wave-rail" id="editor-wave-tabs"></div>
+
+  <aside class="ed-dock" id="editor-palette">
+    <div class="ed-dock-head">
+      <span class="ed-dock-label">SUBJECTS</span>
+      <span class="ed-dock-count" id="editor-dock-count">0/0</span>
+    </div>
+    <div class="ed-dock-list" id="editor-palette-list"></div>
+    <div class="ed-dock-hint" id="editor-hint" data-i18n="editor.empty_palette_hint">
+      <span class="ed-hint-marker">▸</span>
+      <span class="ed-hint-text">тапни иконку → тапни ряд</span>
+    </div>
+  </aside>
+
+  <div class="ed-row-tags" id="editor-row-tags">
+    <div class="ed-row-tag" data-row="0"><span class="ed-row-num">R0</span></div>
+    <div class="ed-row-tag" data-row="1"><span class="ed-row-num">R1</span></div>
+    <div class="ed-row-tag" data-row="2"><span class="ed-row-num">R2</span></div>
+    <div class="ed-row-tag" data-row="3"><span class="ed-row-num">R3</span></div>
+    <div class="ed-row-tag" data-row="4"><span class="ed-row-num">R4</span></div>
+  </div>
+
+  <footer class="ed-deck">
+    <div class="ed-transport">
+      <button class="ed-tx-btn" id="editor-transport-rewind" title="reset"><span>⏮</span></button>
+      <button class="ed-tx-btn ed-tx-play" id="editor-transport-play" title="play/pause"><span id="editor-play-icon">▶</span></button>
+      <button class="ed-tx-btn" id="editor-transport-clear" title="clear zombies"><span>✕</span></button>
+      <span class="ed-timecode" id="editor-timecode">00:00.000</span>
+      <span class="ed-status" id="editor-status">STANDBY</span>
+    </div>
+    <canvas id="editor-timeline" class="ed-timeline"></canvas>
+  </footer>
+
+  <aside class="ed-panel ed-panel-config hidden" id="editor-settings-panel">
+    <header class="ed-panel-head">
+      <span class="ed-panel-title">⚙ LEVEL.CONFIG</span>
+      <button class="ed-panel-close" id="editor-settings-close">✕</button>
+    </header>
+    <div class="ed-panel-body">
+      <div class="ed-field">
+        <label class="ed-field-label">name</label>
+        <input type="text" id="editor-cfg-name" maxlength="48" class="ed-input">
+      </div>
+      <div class="ed-field">
+        <label class="ed-field-label">author</label>
+        <input type="text" id="editor-cfg-author" maxlength="48" class="ed-input">
+      </div>
+      <div class="ed-field">
+        <label class="ed-field-label">description</label>
+        <textarea id="editor-cfg-desc" rows="3" maxlength="500" class="ed-input"></textarea>
+      </div>
+      <div class="ed-field-row">
+        <div class="ed-field ed-field-half">
+          <label class="ed-field-label">startSun</label>
+          <input type="number" id="editor-cfg-sun" min="0" max="9999" value="150" class="ed-input">
+        </div>
+        <div class="ed-field ed-field-half">
+          <label class="ed-field-label">next_level</label>
+          <input type="text" id="editor-cfg-next" placeholder="filename" class="ed-input">
+        </div>
+      </div>
+      <div class="ed-field-row">
+        <label class="ed-toggle">
+          <input type="checkbox" id="editor-cfg-night">
+          <span class="ed-toggle-slot"><span class="ed-toggle-dot"></span></span>
+          <span class="ed-toggle-text">NIGHT</span>
+        </label>
+        <label class="ed-toggle">
+          <input type="checkbox" id="editor-cfg-lawnmowers" checked>
+          <span class="ed-toggle-slot"><span class="ed-toggle-dot"></span></span>
+          <span class="ed-toggle-text">MOWERS</span>
+        </label>
+      </div>
+      <div class="ed-field">
+        <label class="ed-field-label">plants <span class="ed-field-hint">(arsenal)</span></label>
+        <div class="ed-plant-grid" id="editor-cfg-plants"></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="ed-modal hidden" id="editor-keyframe-modal">
+    <div class="ed-modal-box ed-modal-kf">
+      <header class="ed-panel-head">
+        <span class="ed-panel-title">⌬ KEYFRAME.EDIT</span>
+        <button class="ed-panel-close" id="editor-kf-close">✕</button>
+      </header>
+      <div class="ed-panel-body">
+        <div class="ed-field">
+          <label class="ed-field-label">type</label>
+          <select id="editor-kf-type" class="ed-input"></select>
+        </div>
+        <div class="ed-field-row">
+          <div class="ed-field ed-field-half">
+            <label class="ed-field-label">row</label>
+            <select id="editor-kf-row" class="ed-input">
+              <option value="0">R0</option><option value="1">R1</option><option value="2">R2</option><option value="3">R3</option><option value="4">R4</option>
+            </select>
+          </div>
+          <div class="ed-field ed-field-half">
+            <label class="ed-field-label">delay (ms)</label>
+            <input type="number" id="editor-kf-delay" min="0" step="100" value="0" class="ed-input">
+          </div>
+        </div>
+        <div class="ed-kf-actions">
+          <button class="ed-btn ed-btn-danger" id="editor-kf-delete">✕ DELETE</button>
+          <button class="ed-btn ed-btn-primary" id="editor-kf-apply">▣ APPLY</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ed-modal hidden" id="editor-save-modal">
+    <div class="ed-modal-box ed-modal-save">
+      <header class="ed-panel-head">
+        <span class="ed-panel-title">▣ COMMIT.WAVE</span>
+        <button class="ed-panel-close" id="editor-save-close">✕</button>
+      </header>
+      <div class="ed-panel-body">
+        <button class="ed-btn ed-btn-wide ed-btn-primary" id="editor-save-server">→  SAVE TO SERVER</button>
+        <button class="ed-btn ed-btn-wide" id="editor-save-download">⬇  DOWNLOAD .json</button>
+        <div class="ed-save-target" id="editor-save-target"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ed-modal hidden" id="editor-load-modal">
+    <div class="ed-modal-box ed-modal-load">
+      <header class="ed-panel-head">
+        <span class="ed-panel-title">📂 LOAD.WAVE</span>
+        <button class="ed-panel-close" id="editor-load-close">✕</button>
+      </header>
+      <div class="ed-panel-body">
+        <div class="ed-load-list" id="editor-load-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ed-modal hidden" id="editor-confirm-modal">
+    <div class="ed-modal-box ed-modal-confirm">
+      <header class="ed-panel-head">
+        <span class="ed-panel-title" id="editor-confirm-title">⚠ CONFIRM</span>
+        <button class="ed-panel-close" id="editor-confirm-close">✕</button>
+      </header>
+      <div class="ed-panel-body">
+        <p class="ed-confirm-msg" id="editor-confirm-msg"></p>
+        <div class="ed-kf-actions">
+          <button class="ed-btn" id="editor-confirm-no">CANCEL</button>
+          <button class="ed-btn ed-btn-danger" id="editor-confirm-yes">CONFIRM</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -797,6 +1008,7 @@ if (location.protocol === 'file:') {
 <script src="static/js/boot.js"></script>
 <script src="static/js/updater.js"></script>
 <script src="static/js/discord.js"></script>
+<script src="static/js/editor.js"></script>
 <script src="static/js/main.js"></script>
 </body>
 </html>
