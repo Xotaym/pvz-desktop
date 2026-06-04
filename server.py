@@ -5,6 +5,7 @@ import socket
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import zlib
@@ -84,6 +85,25 @@ def _pick_base_dir() -> Path:
     return Path(__file__).parent
 
 
+def _user_data_dir() -> Path:
+    app = "pvz-desktop"
+    if sys.platform == "win32":
+        root = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~\\AppData\\Local")
+        path = Path(root) / app
+    elif sys.platform == "darwin":
+        path = Path(os.path.expanduser("~/Library/Application Support")) / app
+    else:
+        root = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+        path = Path(root) / app
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    except Exception:
+        fallback = Path(tempfile.gettempdir()) / app
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
 BASE_DIR = _pick_base_dir()
 STATIC_DIR = BASE_DIR / "static"
 MANIFEST_FILE = BASE_DIR / "manifest.json"
@@ -91,7 +111,7 @@ MANIFEST_FILE = BASE_DIR / "manifest.json"
 if IS_ANDROID:
     _LOG_DIR = Path(os.environ.get('ANDROID_PRIVATE', '/tmp'))
 elif getattr(sys, 'frozen', False):
-    _LOG_DIR = Path(sys.executable).parent
+    _LOG_DIR = _user_data_dir()
 else:
     _LOG_DIR = BASE_DIR
 LOG_FILE = _LOG_DIR / "game.log"
@@ -122,7 +142,7 @@ def get_manifest():
 
 try:
     import updater as _updater_mod
-    _updater = _updater_mod.Updater(BASE_DIR, get_manifest().get("version", "0.0.0"))
+    _updater = _updater_mod.Updater(BASE_DIR, get_manifest().get("version", "0.0.0"), game_log=LOG_FILE)
 except Exception as _e:
     _updater = None
 
@@ -679,7 +699,9 @@ class GameHandler(SimpleHTTPRequestHandler):
                 self._json({"ok": False, "error": str(e), "content": ""})
             return
         elif parsed.path == "/api/discord/available":
-            if _discord_rpc is None:
+            if IS_ANDROID:
+                self._json({"available": False, "reason": "android_unsupported"})
+            elif _discord_rpc is None:
                 self._json({"available": False, "reason": "module_unavailable"})
             else:
                 ok, reason = _discord_rpc.check_available()
@@ -731,6 +753,11 @@ class GameHandler(SimpleHTTPRequestHandler):
                 else:
                     _updater.run_apply_async(info)
                     self._json({"ok": True})
+        elif parsed.path == "/api/update/retry_install":
+            if _updater is None:
+                self._json({"ok": False, "error": "updater_unavailable"})
+            else:
+                self._json(_updater.retry_install())
         elif parsed.path == "/api/logs/open":
             try:
                 _open_log_in_system()
@@ -818,7 +845,7 @@ class GameHandler(SimpleHTTPRequestHandler):
             try:
                 data = json.loads(body)
                 if getattr(sys, 'frozen', False):
-                    save_path = Path(sys.executable).parent / "save.json"
+                    save_path = _user_data_dir() / "save.json"
                 else:
                     save_path = BASE_DIR / "save.json"
                 with open(save_path, "w", encoding="utf-8") as f:
@@ -1162,7 +1189,7 @@ def main():
         server_thread.start()
 
         if getattr(sys, 'frozen', False):
-            _app_dir = Path(sys.executable).parent
+            _app_dir = _user_data_dir()
         else:
             _app_dir = BASE_DIR
         storage_dir = str(_app_dir / "storage")

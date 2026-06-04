@@ -43,10 +43,25 @@ const CELL_W     = 110;
 const CELL_H     = 110;
 const HUD_H      = 90;
 const MOBILE_BP  = 768;
-const GAME_NOMINAL_W = 1060;
+const CONTENT_BLEED_X = 140;
+const CONTENT_BLEED_Y = 24;
 let _scaleFactor = 1;
 
 function getScale() { return _scaleFactor; }
+
+function editorInsets() {
+  if (!document.body.classList.contains('editor-mode')) return null;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const compact = vw < MOBILE_BP || vh <= 540;
+  if (!compact) return null;
+  const b = document.body.classList;
+  return {
+    top: 6,
+    bottom: b.contains('ed-m-deck-open') ? 86 : 44,
+    left: 74,
+    right: b.contains('ed-m-dock-open') ? 72 : 8
+  };
+}
 
 function updateScale() {
   const vw = window.innerWidth;
@@ -54,7 +69,8 @@ function updateScale() {
   const gw = document.getElementById('game-world');
   const isTouchLike = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   const isAndroidLike = /Android/i.test(navigator.userAgent || '');
-  const shouldScaleMobile = vw < MOBILE_BP || vh < 820 || ((isTouchLike || isAndroidLike) && vh < 900);
+  const ed = editorInsets();
+  const shouldScaleMobile = vw < MOBILE_BP || vh < 820 || ((isTouchLike || isAndroidLike) && vh < 900) || !!ed;
 
   invalidateGridOrigin();
   if (!shouldScaleMobile) {
@@ -64,25 +80,34 @@ function updateScale() {
       gw.style.transformOrigin = '';
       gw.style.width = '';
       gw.style.height = '';
+      gw.style.marginTop = '';
+      gw.style.marginLeft = '';
     }
     document.documentElement.style.setProperty('--game-scale', '1');
     document.documentElement.style.setProperty('--game-scale-inv', '1');
     return;
   }
-  const mobileHudH = 38;
-  const plantBarH = 62;
-  const availH = window.innerHeight - mobileHudH - plantBarH;
-  const scaleW = vw / GAME_NOMINAL_W;
-  const scaleH = availH / (GRID_ROWS * CELL_H);
+  const topInset = ed ? ed.top : 38;
+  const bottomInset = ed ? ed.bottom : 62;
+  const leftInset = ed ? (ed.left || 0) : 0;
+  const rightInset = ed ? (ed.right || 0) : 0;
+  const availH = window.innerHeight - topInset - bottomInset;
+  const availW = vw - leftInset - rightInset;
+  const contentW = GRID_COLS * CELL_W + CONTENT_BLEED_X * 2;
+  const contentH = GRID_ROWS * CELL_H + CONTENT_BLEED_Y * 2;
+  const scaleW = availW / contentW;
+  const scaleH = availH / contentH;
   _scaleFactor = Math.min(scaleW, scaleH, 1);
-  _scaleFactor = Math.max(_scaleFactor, 0.42);
+  _scaleFactor = Math.max(_scaleFactor, 0.3);
   if (gw) {
-    const widthPx = Math.ceil(vw / _scaleFactor) + 2;
+    const widthPx = Math.ceil(availW / _scaleFactor) + 2;
     const heightPx = Math.ceil(availH / _scaleFactor) + 2;
     gw.style.width = widthPx + 'px';
     gw.style.height = heightPx + 'px';
     gw.style.transform = 'scale(' + _scaleFactor + ')';
     gw.style.transformOrigin = 'top left';
+    gw.style.marginTop = ed ? (topInset + 'px') : '';
+    gw.style.marginLeft = ed && leftInset ? (leftInset + 'px') : '';
   }
   document.documentElement.style.setProperty('--game-scale', String(_scaleFactor));
   document.documentElement.style.setProperty('--game-scale-inv', String(1 / _scaleFactor));
@@ -107,10 +132,17 @@ function getGridOrigin() {
   if (_gridOriginCache && _gridOriginKey === key) return _gridOriginCache;
   const totalW = GRID_COLS * CELL_W;
   const totalH = GRID_ROWS * CELL_H;
+  const ed = editorInsets();
   var areaW, areaH;
   if (_scaleFactor < 1) {
-    areaW = window.innerWidth / _scaleFactor;
-    areaH = (window.innerHeight - 38 - 62) / _scaleFactor;
+    const topInset = ed ? ed.top : 38;
+    const bottomInset = ed ? ed.bottom : 62;
+    const hInset = ed ? ((ed.left || 0) + (ed.right || 0)) : 0;
+    areaW = (window.innerWidth - hInset) / _scaleFactor;
+    areaH = (window.innerHeight - topInset - bottomInset) / _scaleFactor;
+  } else if (ed) {
+    areaW = window.innerWidth - (ed.left || 0) - (ed.right || 0);
+    areaH = window.innerHeight - ed.top - ed.bottom;
   } else {
     areaW = window.innerWidth;
     areaH = window.innerHeight - HUD_H;
@@ -2817,7 +2849,17 @@ function openChromeModal(zombie) {
   zombie._chromeState = 'modal';
 
   const picks = [];
-  while (picks.length < 4) picks.push(pickWeightedChromeZombie());
+  let flagCount = 0;
+  let guard = 0;
+  while (picks.length < 4 && guard++ < 64) {
+    let t = pickWeightedChromeZombie();
+    if (t === 'flag_zombie') {
+      if (flagCount >= 1) continue;
+      flagCount++;
+    }
+    picks.push(t);
+  }
+  while (picks.length < 4) picks.push('zombie');
   zombie._chromePicks = picks;
 
   const modal = makeEl('div', 'chrome-search-modal', entitiesLayer());

@@ -42,6 +42,7 @@ storage/
 buildozer.spec
 .buildozer/
 bin/
+src/android/
 
 # Updater
 .update_tmp/

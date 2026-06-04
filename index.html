@@ -633,6 +633,7 @@ if (location.protocol === 'file:') {
     <div class="ed-dock-head">
       <span class="ed-dock-label">SUBJECTS</span>
       <span class="ed-dock-count" id="editor-dock-count">0/0</span>
+      <button class="ed-dock-collapse" id="editor-dock-collapse" title="collapse">✕</button>
     </div>
     <div class="ed-dock-list" id="editor-palette-list"></div>
     <div class="ed-dock-hint" id="editor-hint" data-i18n="editor.empty_palette_hint">
@@ -656,9 +657,24 @@ if (location.protocol === 'file:') {
       <button class="ed-tx-btn" id="editor-transport-clear" title="clear zombies"><span>✕</span></button>
       <span class="ed-timecode" id="editor-timecode">00:00.000</span>
       <span class="ed-status" id="editor-status">STANDBY</span>
+      <button class="ed-deck-toggle" id="editor-deck-toggle" title="timeline">▾</button>
     </div>
     <canvas id="editor-timeline" class="ed-timeline"></canvas>
   </footer>
+
+  <div class="ed-mfabs" id="editor-mfabs">
+    <button class="ed-mfab" id="editor-mfab-bar" title="panel"><span>☰</span></button>
+    <div class="ed-mfab ed-mfab-wave" id="editor-mfab-wave" aria-hidden="true"><span id="editor-mfab-wave-num">W1</span></div>
+    <button class="ed-mfab ed-mfab-dock" id="editor-mfab-dock" title="zombies">
+      <img id="editor-mfab-dock-img" alt="" src="">
+      <svg id="editor-mfab-dock-icn" class="ed-mfab-zicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2a6 6 0 0 0-6 6v3l-1.4 1.4a1 1 0 0 0-.3.7V14a1 1 0 0 0 1 1h1v4a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-4h1a1 1 0 0 0 1-1v-.9a1 1 0 0 0-.3-.7L18 11V8a6 6 0 0 0-6-6Z"/>
+        <path d="M9 10.5 7.5 9.5M9 10.5l1.5-1M15 10.5l1.5-1M15 10.5l-1.5-1"/>
+        <path d="M9 15h6"/>
+        <path d="M10.5 17.5v2.5M13.5 17.5v2.5"/>
+      </svg>
+    </button>
+  </div>
 
   <aside class="ed-panel ed-panel-config hidden" id="editor-settings-panel">
     <header class="ed-panel-head">
@@ -987,6 +1003,7 @@ if (location.protocol === 'file:') {
     <div class="settings-buttons">
       <button class="pause-btn" id="update-check-btn" data-i18n="update.btn.check">Проверить</button>
       <button class="pause-btn primary hidden" id="update-apply-btn" data-i18n="update.btn.now">Обновить</button>
+      <button class="pause-btn primary hidden" id="update-retry-btn" data-i18n="update.btn.retry">Попробовать ещё раз</button>
       <button class="pause-btn" id="update-close" data-i18n="update.btn.later">Закрыть</button>
     </div>
   </div>

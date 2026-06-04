@@ -1021,7 +1021,9 @@ function initSettings() {
   if (savedDiscord && window.Discord) {
     Discord.available().then(res => {
       if (!res.available) {
-        if (res.reason && res.reason.indexOf('pypresence_missing') === 0) {
+        if (res.reason === 'android_unsupported') {
+          showDiscordHint(Lang.t('settings.discord.android'));
+        } else if (res.reason && (res.reason.indexOf('pypresence_missing') === 0 || res.reason === 'module_unavailable')) {
           showDiscordHint(Lang.t('settings.discord.unavailable'));
         } else {
           showDiscordHint(Lang.t('settings.discord.disconnected'));
@@ -1039,8 +1041,10 @@ function initSettings() {
     if (!window.Discord) return;
     if (on) {
       const avail = await Discord.available();
-      if (!avail.available && avail.reason && avail.reason.indexOf('pypresence_missing') === 0) {
-        showDiscordHint(Lang.t('settings.discord.unavailable'));
+      const hardFail = !avail.available && avail.reason &&
+        (avail.reason === 'android_unsupported' || avail.reason === 'module_unavailable' || avail.reason.indexOf('pypresence_missing') === 0);
+      if (hardFail) {
+        showDiscordHint(Lang.t(avail.reason === 'android_unsupported' ? 'settings.discord.android' : 'settings.discord.unavailable'));
         discordCb.checked = false;
         discordCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = Lang.t('settings.toggle.off');
         localStorage.setItem('pvz_discord', 'false');
@@ -1088,9 +1092,9 @@ function initSettings() {
     devCb.closest('.toggle-3d').querySelector('.toggle-3d-label').textContent = on ? Lang.t('settings.toggle.on') : Lang.t('settings.toggle.off');
     localStorage.setItem('pvz_devmode', String(on));
     if (!on) document.getElementById('dev-panel')?.classList.add('hidden');
+    document.getElementById('btn-editor')?.classList.toggle('hidden', !on);
     updateClearLogsVisibility();
     updateModeIndicators();
-    if (typeof window._refreshEditorBtn === 'function') window._refreshEditorBtn();
   }
 
   devCb.addEventListener('change', () => {

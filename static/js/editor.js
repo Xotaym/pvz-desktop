@@ -74,6 +74,10 @@ const WaveEditor = (() => {
     S.spawnedKeyIds = new Set();
     S.loadedFilename = null;
 
+    document.body.classList.remove('ed-m-bar-open', 'ed-m-dock-open', 'ed-m-deck-open');
+    const dt = $('editor-deck-toggle');
+    if (dt) dt.textContent = '▴';
+
     bootGameScreen().then(() => {
       installOverlay();
       bindEvents();
@@ -186,7 +190,7 @@ const WaveEditor = (() => {
       overlay.classList.add('hidden');
       overlay.setAttribute('aria-hidden', 'true');
     }
-    document.body.classList.remove('editor-mode');
+    document.body.classList.remove('editor-mode', 'ed-m-bar-open', 'ed-m-dock-open', 'ed-m-deck-open');
 
     const Engine = window.Engine;
     if (Engine) {
@@ -247,11 +251,32 @@ const WaveEditor = (() => {
         document.querySelectorAll('.ed-dock-item').forEach(el => {
           el.classList.toggle('selected', el.dataset.type === S.paletteSelected);
         });
+        updateMfabDock();
+        if (S.paletteSelected) document.body.classList.remove('ed-m-dock-open');
+        Engine.updateScale();
         updateGridHighlight();
       });
       list.appendChild(item);
     });
     if (countEl) countEl.textContent = `${types.length} unit${types.length !== 1 ? 's' : ''}`;
+    updateMfabDock();
+  }
+
+  function updateMfabDock() {
+    const img = $('editor-mfab-dock-img');
+    const fab = $('editor-mfab-dock');
+    if (!img || !fab) return;
+    if (S.paletteSelected) {
+      img.src = zombieIconPath(S.paletteSelected);
+      img.style.display = 'block';
+      fab.classList.add('ed-mfab-armed');
+      fab.title = shortName(S.paletteSelected);
+    } else {
+      img.src = '';
+      img.style.display = 'none';
+      fab.classList.remove('ed-mfab-armed');
+      fab.title = 'zombies';
+    }
   }
 
   function refreshRowTags() {
@@ -332,6 +357,12 @@ const WaveEditor = (() => {
     add.textContent = '+ NEW.WAVE';
     add.addEventListener('click', addWave);
     root.appendChild(add);
+    updateMfabWave();
+  }
+
+  function updateMfabWave() {
+    const el = $('editor-mfab-wave-num');
+    if (el) el.textContent = 'W' + (S.currentWave + 1);
   }
 
   function switchWave(i) {
@@ -794,6 +825,26 @@ const WaveEditor = (() => {
     bindOnce('editor-confirm-yes', 'click', () => {
       $('editor-confirm-modal').classList.add('hidden');
       if (S.confirmCb) { const cb = S.confirmCb; S.confirmCb = null; cb(); }
+    });
+
+    bindOnce('editor-mfab-bar', 'click', () => {
+      document.body.classList.toggle('ed-m-bar-open');
+      Engine.updateScale();
+    });
+    bindOnce('editor-mfab-dock', 'click', () => {
+      document.body.classList.toggle('ed-m-dock-open');
+      Engine.updateScale();
+    });
+    bindOnce('editor-dock-collapse', 'click', () => {
+      document.body.classList.remove('ed-m-dock-open');
+      Engine.updateScale();
+    });
+    bindOnce('editor-deck-toggle', 'click', () => {
+      document.body.classList.toggle('ed-m-deck-open');
+      const t = $('editor-deck-toggle');
+      if (t) t.textContent = document.body.classList.contains('ed-m-deck-open') ? '▾' : '▴';
+      Engine.updateScale();
+      if (S.active) renderTimeline();
     });
 
     bindCanvas();

@@ -9,7 +9,7 @@ async function init() {
     if (_resizeTimer) clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(() => {
       _resizeTimer = null;
-      if (Engine.State.started && !Engine.State.gameOver) {
+      if ((Engine.State.started && !Engine.State.gameOver) || document.body.classList.contains('editor-mode')) {
         Engine.updateScale();
         Engine.buildGrid();
       }
@@ -39,23 +39,10 @@ async function init() {
 
   const btnEditor = document.getElementById('btn-editor');
   if (btnEditor) {
-    const refreshEditorVisibility = () => {
-      const on = localStorage.getItem('pvz_devmode') === 'true';
-      btnEditor.classList.toggle('hidden', !on);
-    };
-    refreshEditorVisibility();
+    btnEditor.classList.toggle('hidden', localStorage.getItem('pvz_devmode') !== 'true');
     btnEditor.addEventListener('click', () => {
-      console.log('[btn-editor] click; WaveEditor=', !!window.WaveEditor, 'devmode=', localStorage.getItem('pvz_devmode'));
-      if (window.WaveEditor) {
-        WaveEditor.open();
-      } else {
-        console.error('[btn-editor] WaveEditor module not loaded');
-      }
+      if (window.WaveEditor) WaveEditor.open();
     });
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'pvz_devmode') refreshEditorVisibility();
-    });
-    window._refreshEditorBtn = refreshEditorVisibility;
   }
   document.getElementById('btn-settings').addEventListener('click', () => {
     UI.openSettings('menu');
@@ -279,8 +266,21 @@ function resetFullGameState() {
   S._customPlants = null;
   S._customWave = false;
   S._customWaveConfigs = null;
+  S._torrentPairId = 0;
+  S._torrentSlots = [];
+  S._torrentBatchCleanup = false;
+  S._xsasHistory = [];
+  S.petyaPct = 0;
+  S._petyaDecayAccel = 0;
+  S.zombieMutations = {};
+  S.nightMode = false;
+  S.dragZombieId = null;
+  S.cursik.dragZombieId = null;
   S.plants = Array.from({ length: Engine.GRID_ROWS }, () => Array(Engine.GRID_COLS).fill(null));
   S.lawnmowers = Array(Engine.GRID_ROWS).fill(null);
+
+  document.getElementById('petya-meter')?.remove();
+  document.querySelectorAll('.txt-mutation-pop').forEach(el => el.remove());
 
   UI.cancelFileDrag();
   document.querySelector('.sys-folder')?.remove();

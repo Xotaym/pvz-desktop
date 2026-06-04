@@ -8,6 +8,18 @@ echo   Plants VS Zombies Desktop
 echo ============================================
 echo.
 
+echo [paths] Working dir : %CD%
+echo [paths] Script dir  : %~dp0
+echo [paths] venv        : %CD%\venv
+echo [paths] requirements: %CD%\requirements.txt
+echo [paths] server      : %CD%\server.py
+if defined LOCALAPPDATA (
+    echo [paths] user data   : %LOCALAPPDATA%\pvz-desktop
+) else (
+    echo [paths] user data   : %USERPROFILE%\AppData\Local\pvz-desktop
+)
+echo.
+
 python --version >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Python not found! Install Python 3.10+ from python.org
@@ -15,17 +27,20 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+for /f "delims=" %%p in ('where python 2^>nul') do (
+    echo [paths] python      : %%p
+    goto :py_found
+)
+:py_found
+echo.
 
 if not exist "venv\Scripts\python.exe" (
     echo [1/3] Creating virtual environment...
     python -m venv venv
-    venv\Scripts\python -m pip install --no-cache-dir --no-compile --disable-pip-version-check -r requirements.txt --quiet
-    venv\Scripts\python -m pip uninstall -y pip setuptools wheel --quiet 2>nul
-    if exist "venv\Lib\site-packages\pkg_resources" rmdir /s /q "venv\Lib\site-packages\pkg_resources" 2>nul
-    for /d /r "venv\Lib\site-packages" %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d" 2>nul
 )
 
-echo [2/3] Dependencies ready.
+echo [2/3] Installing dependencies...
+venv\Scripts\python -m pip install --disable-pip-version-check -r requirements.txt --quiet
 
 echo [3/3] Starting game...
 echo.

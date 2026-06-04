@@ -17,12 +17,15 @@ const Updater = (() => {
     DONE: 'done',
     ERROR: 'error',
     NO_NET: 'no_net',
+    INSTALL_FAILED: 'install_failed',
   };
 
   let _info = null;
   let _state = STATE.IDLE;
   let _polling = false;
   let _pollTimer = null;
+  let _installRetries = 0;
+  let _lastApkPath = null;
 
   const $ = (id) => document.getElementById(id);
   const log = (msg) => {
@@ -49,6 +52,7 @@ const Updater = (() => {
     [STATE.DONE]:        { icon: '✓', cls: 'success',    msg: () => t('update.done', 'Готово! Перезапуск...') },
     [STATE.ERROR]:       { icon: '✕', cls: 'error',      msg: () => t('update.error', 'Ошибка обновления') },
     [STATE.NO_NET]:      { icon: '⚠', cls: 'error',      msg: () => t('update.no_internet', 'Нет соединения с GitHub') },
+    [STATE.INSTALL_FAILED]: { icon: '⚠', cls: 'error',   msg: () => t('update.install_failed', 'Установщик не открылся') },
   };
 
   function setState(state, customMessage) {
@@ -64,15 +68,20 @@ const Updater = (() => {
     const progressWrap = $('update-progress-wrap');
     const checkBtn = $('update-check-btn');
     const applyBtn = $('update-apply-btn');
+    const retryBtn = $('update-retry-btn');
     const closeBtn = $('update-close');
 
     if (progressWrap) progressWrap.classList.toggle('hidden',
       state !== STATE.DOWNLOADING && state !== STATE.APPLYING);
     if (checkBtn) checkBtn.classList.toggle('hidden',
-      state === STATE.CHECKING || state === STATE.DOWNLOADING || state === STATE.APPLYING || state === STATE.DONE);
+      state === STATE.CHECKING || state === STATE.DOWNLOADING || state === STATE.APPLYING ||
+      state === STATE.DONE || state === STATE.INSTALL_FAILED);
     if (applyBtn) applyBtn.classList.toggle('hidden', state !== STATE.AVAILABLE);
+    if (retryBtn) retryBtn.classList.toggle('hidden',
+      !(state === STATE.INSTALL_FAILED && _installRetries < 1));
+    const apkDone = state === STATE.DONE && _info && _info.build_type === 'apk';
     if (closeBtn) closeBtn.classList.toggle('hidden',
-      state === STATE.DOWNLOADING || state === STATE.APPLYING || state === STATE.DONE);
+      (state === STATE.DOWNLOADING || state === STATE.APPLYING || state === STATE.DONE) && !apkDone);
   }
 
   function setMessage(text) {
@@ -260,6 +269,8 @@ const Updater = (() => {
 
   async function apply() {
     if (!_info || !_info.available) return;
+    _installRetries = 0;
+    _lastApkPath = null;
     setState(STATE.DOWNLOADING);
     setProgress(0, t('update.downloading', 'Скачиваем'));
     try {
@@ -303,7 +314,15 @@ const Updater = (() => {
         if (_state !== STATE.APPLYING) setState(STATE.APPLYING);
         setProgress(progress, s.message || '');
       } else if (stage === 'done') {
-        setState(STATE.DONE);
+        const isApk = _info && _info.build_type === 'apk';
+        if (isApk && s.apk_path) _lastApkPath = s.apk_path;
+        if (isApk && s.installer_ok === false) {
+          showInstallFailed();
+        } else {
+          setState(STATE.DONE, isApk
+            ? t('update.apk_installer', 'Установщик Android открыт. Подтвердите установку, затем откройте приложение заново.')
+            : undefined);
+        }
         setProgress(100);
         stopPolling();
       } else if (stage === 'error') {
@@ -311,6 +330,38 @@ const Updater = (() => {
         stopPolling();
       }
     } catch (e) {}
+  }
+
+  function showInstallFailed() {
+    setState(STATE.INSTALL_FAILED);
+    const path = _lastApkPath || '';
+    const file = path.split('/').pop();
+    const folder = file ? path.slice(0, -file.length).replace(/\/+$/, '') : path;
+    const fullPath = folder ? folder + '/' + file : path;
+    const tpl = t('update.install_manual',
+      'Не открылся установщик? Файл здесь:\n{path}\nУдалите старую версию игры, затем откройте этот файл вручную.');
+    setMessage(tpl.replace('{path}', fullPath));
+  }
+
+  async function retryInstall() {
+    _installRetries += 1;
+    setState(STATE.APPLYING, t('update.applying', 'Применяем обновление...'));
+    try {
+      const res = await fetch('/api/update/retry_install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const data = await res.json();
+      if (data.apk_path) _lastApkPath = data.apk_path;
+      if (data.ok && data.installer_ok !== false) {
+        setState(STATE.DONE, t('update.apk_installer', 'Установщик Android открыт. Подтвердите установку, затем откройте приложение заново.'));
+      } else {
+        showInstallFailed();
+      }
+    } catch (e) {
+      showManualInstall();
+    }
   }
 
   let _toastTimer = null;
@@ -347,6 +398,7 @@ const Updater = (() => {
       ['update-close', () => closeModal()],
       ['update-check-btn', () => { _info = null; check(false); }],
       ['update-apply-btn', () => apply()],
+      ['update-retry-btn', () => retryInstall()],
       ['menu-update-badge', () => openModal()],
     ];
     for (const [id, handler] of handlers) {

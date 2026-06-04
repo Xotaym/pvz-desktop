@@ -50,13 +50,14 @@ PRESERVE = {
     'game.log',
 }
 
-_status = {"stage": "idle", "progress": 0, "message": "", "version": None}
+_status = {"stage": "idle", "progress": 0, "message": "", "version": None,
+           "apk_path": None, "installer_ok": None, "hard_fail": False}
 _status_lock = threading.Lock()
 _check_cache = {"ts": 0, "data": None}
 _cache_lock = threading.Lock()
 
 
-def _set_status(stage=None, progress=None, message=None, version=None):
+def _set_status(stage=None, progress=None, message=None, version=None, **extra):
     with _status_lock:
         if stage is not None:
             _status["stage"] = stage
@@ -66,6 +67,8 @@ def _set_status(stage=None, progress=None, message=None, version=None):
             _status["message"] = message
         if version is not None:
             _status["version"] = version
+        for k, v in extra.items():
+            _status[k] = v
 
 
 def get_status():
@@ -153,19 +156,30 @@ def _find_asset(assets, build_type, version):
 
 
 class Updater:
-    def __init__(self, base_dir, current_version):
+    def __init__(self, base_dir, current_version, game_log=None):
         self.base_dir = Path(base_dir)
         self.current_version = current_version
         self.build_type = detect_build_type()
         self.log_file = self.base_dir / "update.log"
+        self.game_log = Path(game_log) if game_log else None
+        self._last_apk = None
+        self._wd_stop = None
+        self._wd_thread = None
 
     def _log(self, msg):
-        line = f"[{datetime.now().isoformat(timespec='seconds')}] {msg}"
+        ts = datetime.now().isoformat(timespec='seconds')
+        line = f"[{ts}] {msg}"
         try:
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
         except Exception:
             pass
+        if self.game_log:
+            try:
+                with open(self.game_log, "a", encoding="utf-8") as f:
+                    f.write(f"[{ts}] [UPDATER] {msg}\n")
+            except Exception:
+                pass
         print(f"[Updater] {msg}")
 
     def check(self, force=False):
@@ -234,6 +248,7 @@ class Updater:
     def download(self, url, dest):
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
+        self._log(f"download start: {url} -> {dest}")
         with _http_open(url, timeout=30) as resp:
             total = int(resp.headers.get("Content-Length") or 0)
             downloaded = 0
@@ -249,6 +264,7 @@ class Updater:
                         _set_status(progress=pct, message=f"{downloaded // 1024} / {total // 1024} KB")
         if total > 0 and dest.stat().st_size != total:
             raise IOError(f"download size mismatch: {dest.stat().st_size} vs {total}")
+        self._log(f"download done: {dest} ({dest.stat().st_size} bytes)")
         return dest
 
     def _is_preserved(self, rel_path):
@@ -339,54 +355,92 @@ class Updater:
     def apply_apk(self, apk_path):
         self._log(f"apply_apk: {apk_path}")
         apk_str = str(apk_path)
+        self._last_apk = apk_str
+        autoclass = None
+        PA = None
         try:
-            try:
-                import server as _srv
-                _srv._init_jnius()
-                if _srv.HAS_JNIUS:
-                    autoclass = _srv._jnius_classes['autoclass']
-                    PA = _srv._jnius_classes['PythonActivity']
-                else:
-                    raise ImportError("jnius not initialized in server")
-            except Exception:
-                from jnius import autoclass
-                PA = autoclass('org.kivy.android.PythonActivity')
+            import server as _srv
+            _srv._init_jnius()
+            if _srv.HAS_JNIUS:
+                autoclass = _srv._jnius_classes['autoclass']
+                PA = _srv._jnius_classes['PythonActivity']
+                self._log("apply_apk: using server jnius")
+        except Exception as e:
+            self._log(f"apply_apk: server jnius unavailable: {type(e).__name__}: {e}")
 
+        if autoclass is None:
+            try:
+                from jnius import autoclass as _ac
+                autoclass = _ac
+                PA = autoclass('org.kivy.android.PythonActivity')
+                self._log("apply_apk: using direct jnius import")
+            except Exception as e:
+                self._log(f"apply_apk: jnius fully unavailable: {type(e).__name__}: {e}")
+                return self._shell_install(apk_str)
+
+        try:
             activity = PA.mActivity
             if activity is None:
                 raise RuntimeError("no current activity")
             Intent = autoclass('android.content.Intent')
             Uri = autoclass('android.net.Uri')
             File = autoclass('java.io.File')
+            Build = autoclass('android.os.Build$VERSION')
 
             f = File(apk_str)
-            uri = None
+
+            try:
+                Settings = autoclass('android.provider.Settings')
+                if Build.SDK_INT >= 26 and not activity.getPackageManager().canRequestPackageInstalls():
+                    perm_intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                    perm_intent.setData(Uri.parse("package:" + activity.getPackageName()))
+                    perm_intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    activity.startActivity(perm_intent)
+                    self._log("requested install-unknown-apps permission")
+            except Exception as e:
+                self._log(f"install-permission check skipped: {e}")
+
             try:
                 FileProvider = autoclass('androidx.core.content.FileProvider')
                 authority = activity.getPackageName() + ".fileprovider"
                 uri = FileProvider.getUriForFile(activity, authority, f)
             except Exception as e:
-                self._log(f"FileProvider unavailable: {e}, using file:// uri")
-                uri = Uri.fromFile(f)
+                self._log(f"FileProvider failed: {type(e).__name__}: {e} -> cannot launch installer safely")
+                return False
 
             intent = Intent(Intent.ACTION_VIEW)
             intent.setDataAndType(uri, "application/vnd.android.package-archive")
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            activity.startActivity(intent)
-        except Exception as e:
-            self._log(f"apply_apk jnius failed: {type(e).__name__}: {e}, trying shell fallback")
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             try:
-                subprocess.Popen(
-                    ["am", "start", "-a", "android.intent.action.VIEW",
-                     "-d", "file://" + apk_str,
-                     "-t", "application/vnd.android.package-archive",
-                     "--grant-read-uri-permission"],
-                    close_fds=True,
-                )
-            except Exception as e2:
-                self._log(f"shell fallback failed: {e2}")
-                raise RuntimeError(f"apk install failed: {e}; fallback: {e2}")
+                pm = activity.getPackageManager()
+                infos = pm.queryIntentActivities(intent, 0)
+                for i in range(infos.size()):
+                    pkg = infos.get(i).activityInfo.packageName
+                    activity.grantUriPermission(pkg, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            except Exception as ge:
+                self._log(f"grantUriPermission skipped: {ge}")
+            activity.startActivity(intent)
+            self._log("install intent launched (FileProvider)")
+            return True
+        except Exception as e:
+            self._log(f"apply_apk failed: {type(e).__name__}: {e}")
+            return False
+
+    def _shell_install(self, apk_str):
+        self._log("apply_apk: attempting shell fallback (file:// - may be blocked on Android 7+)")
+        try:
+            subprocess.Popen(
+                ["am", "start", "-a", "android.intent.action.VIEW",
+                 "-d", "file://" + apk_str,
+                 "-t", "application/vnd.android.package-archive",
+                 "--grant-read-uri-permission"],
+                close_fds=True,
+            )
+            self._log("shell fallback launched (unconfirmed) -> treating as hard fail")
+        except Exception as e2:
+            self._log(f"shell fallback failed: {e2}")
+        return False
 
     def restart(self):
         self._log("restart requested")
@@ -416,11 +470,89 @@ class Updater:
         except Exception as e:
             self._log(f"restart failed: {e}")
 
+    APPLY_STALL_TIMEOUT = 20
+
     def run_apply_async(self, info):
         t = threading.Thread(target=self._run_apply, args=(info,), daemon=True)
         t.start()
 
+    def _arm_watchdog(self):
+        self._cancel_watchdog()
+        self._wd_stop = threading.Event()
+        self._wd_thread = threading.Thread(target=self._watchdog_loop, daemon=True)
+        self._wd_thread.start()
+
+    def _cancel_watchdog(self):
+        ev = getattr(self, "_wd_stop", None)
+        if ev:
+            ev.set()
+        self._wd_stop = None
+        self._wd_thread = None
+
+    def _watchdog_loop(self):
+        ev = self._wd_stop
+        last_sig = None
+        stalled = 0
+        while ev is not None and not ev.is_set():
+            s = get_status()
+            stage = s.get("stage")
+            if stage in ("done", "error"):
+                return
+            sig = (stage, s.get("progress"))
+            if sig == last_sig:
+                stalled += 1
+            else:
+                stalled = 0
+                last_sig = sig
+            if stalled * 2 >= self.APPLY_STALL_TIMEOUT:
+                self._log(f"watchdog: no progress for {self.APPLY_STALL_TIMEOUT}s at {sig} -> manual install")
+                _set_status(stage="done", progress=100, message="timed out, manual install",
+                            apk_path=self._last_apk, installer_ok=False, hard_fail=True)
+                return
+            ev.wait(2)
+
+    def retry_install(self):
+        self._log("retry_install requested")
+        if not self._last_apk or not Path(self._last_apk).exists():
+            self._log("retry_install: no downloaded apk")
+            return {"ok": False, "error": "no_file"}
+        ok = self.apply_apk(self._last_apk)
+        self._log(f"retry_install result: ok={ok}")
+        _set_status(stage="done", progress=100,
+                    message="installer launched" if ok else "installer failed",
+                    apk_path=self._last_apk, installer_ok=bool(ok), hard_fail=not ok)
+        return {"ok": bool(ok), "apk_path": self._last_apk, "installer_ok": bool(ok)}
+
     def _android_download_dir(self):
+        candidates = []
+        try:
+            from jnius import autoclass
+            Environment = autoclass('android.os.Environment')
+            pub = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS)
+            if pub:
+                candidates.append(Path(pub.getAbsolutePath()))
+        except Exception as e:
+            self._log(f"public Downloads resolve failed: {e}")
+
+        ext_env = os.environ.get("EXTERNAL_STORAGE")
+        if ext_env:
+            candidates.append(Path(ext_env) / "Download")
+        candidates.append(Path("/storage/emulated/0/Download"))
+        candidates.append(Path("/sdcard/Download"))
+
+        for c in candidates:
+            try:
+                c.mkdir(parents=True, exist_ok=True)
+                probe = c / ".pvz_write_test"
+                probe.write_text("ok", encoding="utf-8")
+                probe.unlink()
+                self._log(f"download dir: {c}")
+                return c
+            except Exception as e:
+                self._log(f"download dir not writable {c}: {e}")
+                continue
+
         try:
             from jnius import autoclass
             PA = autoclass('org.kivy.android.PythonActivity')
@@ -429,15 +561,19 @@ class Updater:
             if ext:
                 p = Path(ext.getAbsolutePath()) / "updates"
                 p.mkdir(parents=True, exist_ok=True)
+                self._log(f"download dir (app-private fallback): {p}")
                 return p
         except Exception as e:
-            self._log(f"android dir resolve failed: {e}")
+            self._log(f"android private dir resolve failed: {e}")
         return None
 
     def _run_apply(self, info):
+        self._log(f"_run_apply start: build_type={self.build_type} latest={info.get('latest')}")
+        self._arm_watchdog()
         try:
             url = info.get("asset_url")
             if not url:
+                self._cancel_watchdog()
                 _set_status(stage="error", message="no asset url")
                 return
 
@@ -469,15 +605,27 @@ class Updater:
                 _set_status(stage="done", progress=100, message="restarting")
                 threading.Timer(1.5, lambda: os._exit(0)).start()
             else:
-                self.apply_apk(dest)
-                _set_status(stage="done", progress=100, message="installer launched")
+                self._cancel_watchdog()
+                ok = self.apply_apk(dest)
+                if not ok:
+                    self._log("apply_apk returned False (API error) -> hard fail, manual install")
+                    _set_status(stage="done", progress=100, message="installer failed",
+                                apk_path=str(dest), installer_ok=False, hard_fail=True)
+                else:
+                    self._log("apply_apk returned True (install intent launched)")
+                    _set_status(stage="done", progress=100, message="installer launched",
+                                apk_path=str(dest), installer_ok=True, hard_fail=False)
         except (urllib.error.URLError, ssl.SSLError, socket.error, OSError) as e:
+            self._cancel_watchdog()
             kind = _classify_network_error(e)
             self._log(f"apply network error ({kind}): {type(e).__name__}: {e}")
             _set_status(stage="error", message=f"network ({kind}): {e}")
         except Exception as e:
+            self._cancel_watchdog()
             self._log(f"apply error: {type(e).__name__}: {e}")
             _set_status(stage="error", message=f"{type(e).__name__}: {e}")
+        finally:
+            self._cancel_watchdog()
 
 
 def tail_log(log_path, n=50):
