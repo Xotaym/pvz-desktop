@@ -43,6 +43,7 @@ const WaveEditor = (() => {
       plants: ['sunflower', 'peashooter', 'folder_magnet', 'snow_peashooter', 'cherry', 'avast_nut'],
       lawnmowers: true,
       next_level: null,
+      dialogues: [],
       waves: [{ zombies: [] }],
     };
   }
@@ -958,6 +959,9 @@ const WaveEditor = (() => {
         if (key === 'lawnmowers') applyLawnmowers();
       });
     });
+    bindOnce('editor-cfg-dialogues', 'input', (e) => {
+      S.level.dialogues = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+    });
     buildPlantPicker();
   }
 
@@ -1018,6 +1022,7 @@ const WaveEditor = (() => {
     setVal('editor-cfg-next', lv.next_level || '');
     const n = $('editor-cfg-night'); if (n) n.checked = !!lv.nightMode;
     const m = $('editor-cfg-lawnmowers'); if (m) m.checked = lv.lawnmowers !== false;
+    setVal('editor-cfg-dialogues', (lv.dialogues || []).join('\n'));
     buildPlantPicker();
   }
   function setVal(id, v) {
@@ -1127,6 +1132,7 @@ const WaveEditor = (() => {
       plants: S.level.plants.slice(),
       lawnmowers: S.level.lawnmowers !== false,
       next_level: S.level.next_level || null,
+      dialogues: (S.level.dialogues || []).filter(Boolean),
       waves: S.level.waves.map(w => ({
         zombies: w.zombies.map(k => ({ type: k.type, row: k.row, delay: k.delay })),
       })),
@@ -1237,6 +1243,7 @@ const WaveEditor = (() => {
       plants: Array.isArray(data.plants) ? data.plants.slice() : [],
       lawnmowers: data.lawnmowers !== false,
       next_level: data.next_level || null,
+      dialogues: Array.isArray(data.dialogues) ? data.dialogues.slice() : [],
       waves: data.waves.map(w => ({
         zombies: (w.zombies || []).map(z => ({
           id: S.nextKeyId++,

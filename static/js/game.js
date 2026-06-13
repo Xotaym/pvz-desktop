@@ -758,7 +758,113 @@ function startCustomWave(config) {
   S.wave = 0;
   UI.updateWave();
 
-  startCustomWaveStep(0);
+  const dialogues = Array.isArray(config.dialogues) ? config.dialogues.filter(s => s && s.trim()) : [];
+  if (dialogues.length) {
+    playCursikDialogue(dialogues, () => startCustomWaveStep(0));
+  } else {
+    startCustomWaveStep(0);
+  }
+}
+
+function playCursikDialogue(phrases, onComplete) {
+  const overlay = document.getElementById('cursik-dialogue');
+  const textEl = document.getElementById('cd-text');
+  const hintEl = document.getElementById('cd-hint');
+  if (!overlay || !textEl || !phrases.length) { if (onComplete) onComplete(); return; }
+
+  const CHAR_MS = 30;
+  let idx = 0;
+  let typing = false;
+  let charPos = 0;
+  let typeTimer = null;
+  let current = '';
+  let finished = false;
+
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-hidden', 'false');
+  const portrait = overlay.querySelector('.cd-portrait');
+  if (portrait) {
+    portrait.classList.remove('cd-out');
+    void portrait.offsetWidth;
+    portrait.classList.add('cd-in');
+  }
+
+  function stopTyping() {
+    if (typeTimer) { clearTimeout(typeTimer); typeTimer = null; }
+  }
+
+  function typeStep() {
+    if (finished) return;
+    if (Engine.State.paused) { typeTimer = setTimeout(typeStep, 120); return; }
+    charPos++;
+    textEl.textContent = current.slice(0, charPos);
+    if (charPos >= current.length) {
+      typing = false;
+      stopTyping();
+      hintEl.classList.remove('hidden');
+    } else {
+      typeTimer = setTimeout(typeStep, CHAR_MS);
+    }
+  }
+
+  function showPhrase(i) {
+    current = phrases[i];
+    charPos = 0;
+    typing = true;
+    textEl.textContent = '';
+    hintEl.classList.add('hidden');
+    stopTyping();
+    typeTimer = setTimeout(typeStep, CHAR_MS);
+  }
+
+  function advance() {
+    if (finished) return;
+    if (typing) {
+      stopTyping();
+      typing = false;
+      textEl.textContent = current;
+      hintEl.classList.remove('hidden');
+      return;
+    }
+    idx++;
+    if (idx < phrases.length) {
+      showPhrase(idx);
+    } else {
+      finish();
+    }
+  }
+
+  function finish() {
+    if (finished) return;
+    finished = true;
+    stopTyping();
+    document.removeEventListener('keydown', onKey, true);
+    overlay.removeEventListener('click', onClick);
+    if (portrait) { portrait.classList.remove('cd-in'); portrait.classList.add('cd-out'); }
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+      if (portrait) portrait.classList.remove('cd-out');
+      if (onComplete) onComplete();
+    }, 450);
+  }
+
+  function onKey(e) {
+    if (e.key === ' ' || e.key === 'Enter' || e.key === 'Spacebar') {
+      e.preventDefault();
+      e.stopPropagation();
+      advance();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+  function onClick() { advance(); }
+
+  document.addEventListener('keydown', onKey, true);
+  overlay.addEventListener('click', onClick);
+
+  setTimeout(() => showPhrase(0), 450);
 }
 
 function startCustomWaveStep(index) {

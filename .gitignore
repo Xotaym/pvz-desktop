@@ -31,6 +31,9 @@ storage/
 *.swp
 *.swo
 
+# macOS_Build
+macOS_build/
+
 # Logs
 *.log
 

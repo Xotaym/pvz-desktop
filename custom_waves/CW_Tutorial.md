@@ -35,6 +35,7 @@ cwave stop          - остановить текущую кастомную в�
   "nightMode": false,
   "plants": ["sunflower", "peashooter", "cherry"],
   "lawnmowers": true,
+  "dialogues": ["Привет! Я Курсик.", "Сейчас полезут зомби..", "Удачи!"],
   "waves": [
     {
       "zombies": [
@@ -65,6 +66,7 @@ cwave stop          - остановить текущую кастомную в�
 | `plants` | нет | все | Массив ключей доступных растений |
 | `lawnmowers` | нет | true | Включены ли газонокосилки |
 | `next_level` | нет | - | Имя файла (без `.json`) следующего уровня. После прохождения появится модалка с предложением перейти |
+| `dialogues` | нет | - | Массив фраз Курсика. Показываются один раз в начале уровня перед первой волной (тайпрайтер, скип по клику/Пробелу/Enter) |
 
 ### Структура волны
 
@@ -103,6 +105,7 @@ cwave stop          - остановить текущую кастомную в�
 | `petya_zombie` | Зомби-Петя | Качает Petya, BSOD при 100% |
 | `chrome_zombie` | Chrome-зомби | Призывает рандомного зомби на соседнюю клетку |
 | `txt_zombie` | txt-зомби | Каждые 2 клетки правит характеристику случайного типа зомби (до конца уровня) |
+| `cursor_zombie` | Курсор-зомби | При смерти выпускает курсор, который хватает убившее его растение на 4с (можно сбить кошкомышью) |
 | `your_death` | Ваша смерть | Босс |
 
 ### Ключи растений
@@ -164,6 +167,7 @@ cwave stop          - stop the current custom wave
   "nightMode": false,
   "plants": ["sunflower", "peashooter", "cherry"],
   "lawnmowers": true,
+  "dialogues": ["Hi! I'm Cursik.", "Zombies are coming...", "Good luck!"],
   "waves": [
     {
       "zombies": [
@@ -188,6 +192,7 @@ cwave stop          - stop the current custom wave
 | `plants` | no | all | Array of available plant keys |
 | `lawnmowers` | no | true | Whether lawnmowers are enabled |
 | `next_level` | no | - | Filename (without `.json`) of the next level. After completion, a modal appears offering to continue |
+| `dialogues` | no | - | Array of Cursik phrases. Shown once at level start before the first wave (typewriter, skip via click/Space/Enter) |
 
 ### Wave structure
 
@@ -217,6 +222,7 @@ Each wave is an object with a `zombies` array. Waves run sequentially: the next 
 | `petya_zombie` | Petya-Zombie | Downloads Petya, BSOD at 100% |
 | `chrome_zombie` | Chrome Zombie | Summons a random zombie onto an adjacent cell |
 | `txt_zombie` | txt Zombie | Every 2 cells edits a random zombie type's stat (persists for the level) |
+| `cursor_zombie` | Cursor Zombie | On death releases a cursor that grabs the plant that killed it for 4s (can be shot down with Catmouse) |
 | `your_death` | Your Death | Boss |
 
 ### Plant keys

@@ -219,6 +219,8 @@ const State = {
   cursorProjectiles: [],
   nextCursorProjId: 0,
 
+  deathCursors: [],
+
   petyaPct: 0,
   _petyaDecayAccel: 0,
 
@@ -1079,6 +1081,8 @@ function removePlant(col, row, safe) {
   const p = State.plants[row][col];
   if (!p) return;
 
+  if (!safe && (p._cursorGrabbed || p._bungeeGrabbed)) return;
+
   if (p.type === 'folder_magnet') {
     const heldFile = State.droppedFiles.find(f =>
       !f.collected && f.heldByMagnet && f.magnetCol === col && f.magnetRow === row
@@ -1249,6 +1253,7 @@ function scheduleSunflower(plant) {
   State._timers[key] = setTimeout(() => {
     if (!State.plants[plant.row][plant.col]) return;
     if (State.plants[plant.row][plant.col].archived) return;
+    if (State.plants[plant.row][plant.col]._cursorGrabbed) { scheduleSunflower(plant); return; }
     if (State.gameOver) return;
     if (State.paused) {
       scheduleSunflower(plant);
@@ -1277,6 +1282,7 @@ function scheduleDaisy(plant) {
     if (!State.plants[plant.row][plant.col]) return;
     if (State.plants[plant.row][plant.col].archived) return;
     if (State.plants[plant.row][plant.col].infected) return;
+    if (State.plants[plant.row][plant.col]._cursorGrabbed) { scheduleDaisy(plant); return; }
     if (State.gameOver) return;
     if (State.paused) { scheduleDaisy(plant); return; }
     if (plant._hasDrop && !State.funMode) { scheduleDaisy(plant); return; }
@@ -1419,7 +1425,7 @@ function scheduleShoot(plant) {
   State._timers[key] = setInterval(() => {
     const cur = State.plants[plant.row] && State.plants[plant.row][plant.col];
     if (!cur) { clearTimer(key); return; }
-    if (cur.archived) return;
+    if (cur.archived || cur._cursorGrabbed) return;
     if (cur.infected && plant.type !== 'pirate_mushroom') return;
     if (State.paused || State.gameOver) return;
     const plantX = cellToPixel(plant.col, plant.row).x;
@@ -1471,7 +1477,7 @@ function shootPea(plant, direction = 1) {
   const mc = spawnMiniCursik();
   posEl(mc, startX + (direction > 0 ? 10 : -10), peaY - 8);
   const id = State.nextPeaId++;
-  const pea = { id, row: plant.row, x: startX, el, alive: true, mc, peaY, direction, slow: isSlow };
+  const pea = { id, row: plant.row, srcCol: plant.col, srcRow: plant.row, x: startX, el, alive: true, mc, peaY, direction, slow: isSlow };
   if (cfg.shootRange != null) {
     pea.maxX = startX + cfg.shootRange * CELL_W * direction;
   }
@@ -1579,16 +1585,28 @@ function updateCursorProjectiles(dt) {
       setTimeout(() => trail.remove(), 360);
     }
     let hit = false;
-    for (let j = 0; j < State.zombies.length; j++) {
-      const z = State.zombies[j];
-      if (!z.alive) continue;
-      const zCy = z.y + 50;
-      if (p.x >= z.x - ZOMBIE_HALF_W && p.x <= z.x + ZOMBIE_HALF_W &&
-          p.y >= zCy - ZOMBIE_HALF_H && p.y <= zCy + ZOMBIE_HALF_H) {
-        damageZombie(z, p.damage);
+    for (let j = 0; j < State.deathCursors.length; j++) {
+      const dc = State.deathCursors[j];
+      if (dc.dead || dc.phase === 'gone') continue;
+      if (Math.abs(p.x - dc.x) <= 32 && Math.abs(p.y - dc.y) <= 32) {
+        knockDownCursor(dc);
         spawnParticles(p.x, p.y, '#ffffff', 6);
         hit = true;
         break;
+      }
+    }
+    if (!hit) {
+      for (let j = 0; j < State.zombies.length; j++) {
+        const z = State.zombies[j];
+        if (!z.alive) continue;
+        const zCy = z.y + 50;
+        if (p.x >= z.x - ZOMBIE_HALF_W && p.x <= z.x + ZOMBIE_HALF_W &&
+            p.y >= zCy - ZOMBIE_HALF_H && p.y <= zCy + ZOMBIE_HALF_H) {
+          damageZombie(z, p.damage);
+          spawnParticles(p.x, p.y, '#ffffff', 6);
+          hit = true;
+          break;
+        }
       }
     }
     const reachedEnd = t >= 1;
@@ -2065,6 +2083,13 @@ const ZOMBIE_TYPES = {
     isTxt: true,
     txtMutateCells: 2,
   },
+  cursor_zombie: {
+    name: 'cursor-zombie.jpg', file: 'cursor-zombie.jpg',
+    displayName: 'cursor-zombie.jpg',
+    hp: [8, 10], speed: 0.6,
+    isCursorZombie: true,
+    cursorGrabMs: 4000,
+  },
 };
 
 const TXT_MUTATION_TARGETS = ['hdd_zombie', 'ssd_zombie', 'winrar_zombie', 'system_zombie', 'flag_zombie', 'pole_loud', 'pole_quiet', 'excel_zombie', 'trojan_catapult', 'zombie'];
@@ -2168,6 +2193,8 @@ function spawnZombie(type, row, opts) {
     isPetya: cfg.isPetya || false,
     isChrome: cfg.isChrome || false,
     isTxt: cfg.isTxt || false,
+    isCursorZombie: cfg.isCursorZombie || false,
+    cursorGrabMs: cfg.cursorGrabMs || 0,
   };
 
   if (editorMode) {
@@ -2534,8 +2561,9 @@ function isShieldedByFlag(zombie) {
   return false;
 }
 
-function damageZombie(zombie, dmg) {
+function damageZombie(zombie, dmg, source) {
   if (!zombie.alive) return;
+  if (source) zombie._lastHitSource = source;
   if (isShieldedByFlag(zombie)) {
     spawnParticles(zombie.x + 40, zombie.y + 20, '#4488ff', 3);
     return;
@@ -2577,7 +2605,7 @@ function damageZombie(zombie, dmg) {
       const overflow = -zombie.armorHits;
       if (overflow > 0) {
         zombie.hp = Math.max(0, zombie.hp - overflow);
-        if (zombie.hp <= 0) killZombie(zombie);
+        if (zombie.hp <= 0) killZombie(zombie, { killer: zombie._lastHitSource });
       }
     }
     return;
@@ -2589,7 +2617,7 @@ function damageZombie(zombie, dmg) {
   zombie.hpFill.style.width = pct + '%';
   if (zombie.hpText) zombie.hpText.textContent = Math.max(0, zombie.hp) + '/' + zombie.maxHp;
 
-  if (zombie.hp <= 0) killZombie(zombie);
+  if (zombie.hp <= 0) killZombie(zombie, { killer: zombie._lastHitSource });
   excelSpeedCheck(zombie, dmg);
 }
 
@@ -2617,6 +2645,10 @@ function killZombie(zombie, opts) {
   const devKill = opts === true || (opts && opts.dev);
   const dropFile = opts && opts.dropFile;
   GameLog.log('ZOMBIE', `Killed ${zombie.type} #${zombie.id} at row ${zombie.row} x=${Math.round(zombie.x)} (dev=${devKill}, dropFile=${!!dropFile})`);
+
+  if (zombie.isCursorZombie && !devKill) {
+    launchDeathCursor(zombie, opts && opts.killer);
+  }
 
   if (zombie.isPetya) {
     const drop = ZOMBIE_TYPES.petya_zombie.petyaKillDrop || 4;
@@ -2717,6 +2749,154 @@ function killZombie(zombie, opts) {
     zombie.el.remove();
     State.zombies = State.zombies.filter(z => z.id !== zombie.id);
   }, 350);
+}
+
+function restorePlantSchedule(plant) {
+  const pt = plant.type;
+  if (pt === 'sunflower' || pt === 'sun_mushroom') scheduleSunflower(plant);
+  else if (pt === 'peashooter' || pt === 'siamese_peashooter' || pt === 'double_peashooter' || pt === 'snow_peashooter' || pt === 'pirate_mushroom') scheduleShoot(plant);
+  else if (pt === 'folder_magnet') scheduleFolderMagnet(plant);
+  else if (pt === 'daisy') scheduleDaisy(plant);
+}
+
+function findCursorTargetPlant(zombie, killer) {
+  if (killer && State.plants[killer.row]) {
+    const p = State.plants[killer.row][killer.col];
+    if (p && !p._bungeeGrabbed && !p._cursorGrabbed) return p;
+  }
+  const rowPlants = State.plants[zombie.row];
+  if (rowPlants) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const p = rowPlants[c];
+      if (p && !p._bungeeGrabbed && !p._cursorGrabbed) return p;
+    }
+  }
+  return null;
+}
+
+function launchDeathCursor(zombie, killer) {
+  const plant = findCursorTargetPlant(zombie, killer);
+  const layer = entitiesLayer();
+  const el = makeEl('img', 'death-cursor', layer);
+  el.src = 'static/img/ui/cursik.png';
+  el.draggable = false;
+  el.onerror = () => { el.classList.add('asset-missing'); };
+  const sx = zombie.x + 30;
+  const sy = zombie.y + 10;
+  posEl(el, sx, sy);
+
+  const dc = {
+    id: State.nextCursorProjId++,
+    el, plant: plant || null,
+    x: sx + 16, y: sy + 16,
+    phase: plant ? 'flying' : 'leaving',
+    dead: false,
+  };
+  State.deathCursors.push(dc);
+
+  if (!plant) {
+    flyCursorToSky(dc);
+    return;
+  }
+
+  const pos = cellToPixel(plant.col, plant.row);
+  const tx = pos.x + CELL_W / 2 - 16;
+  const ty = pos.y + CELL_H / 2 - 40;
+  const startTime = performance.now();
+  const duration = 500;
+
+  function fly() {
+    if (dc.dead) return;
+    if (State.gameOver) { removeDeathCursor(dc); return; }
+    if (State.paused) { requestAnimationFrame(fly); return; }
+    const t = Math.min(1, (performance.now() - startTime) / duration);
+    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const cx = sx + (tx - sx) * eased;
+    const cy = sy + (ty - sy) * eased;
+    posEl(el, cx, cy);
+    dc.x = cx + 16; dc.y = cy + 16;
+    if (t < 1) requestAnimationFrame(fly);
+    else grabPlantWithCursor(dc);
+  }
+  requestAnimationFrame(fly);
+}
+
+function grabPlantWithCursor(dc) {
+  const plant = dc.plant;
+  const cur = State.plants[plant.row] && State.plants[plant.row][plant.col];
+  if (!cur || cur !== plant || plant._cursorGrabbed || plant._bungeeGrabbed) {
+    removeDeathCursor(dc);
+    return;
+  }
+
+  dc.phase = 'holding';
+  plant._cursorGrabbed = true;
+  plant.el.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+  plant.el.style.opacity = '0.65';
+  plant.el.style.transform = 'translateY(-14px)';
+  plant.el.style.zIndex = '40';
+  clearTimer(`plant_shoot_${plant.col}_${plant.row}`);
+  clearTimer(`plant_sun_${plant.col}_${plant.row}`);
+  clearTimer(`magnet_${plant.col}_${plant.row}`);
+  clearTimer(`plant_drop_${plant.col}_${plant.row}`);
+  GameLog.log('CURSOR', `Cursor grabbed plant ${plant.type} at [${plant.col},${plant.row}]`);
+
+  const grabMs = ZOMBIE_TYPES.cursor_zombie.cursorGrabMs || 4000;
+  dc.releaseKey = `cursor_release_${plant.col}_${plant.row}`;
+  gameTimer(dc.releaseKey, () => {
+    freePlantFromCursor(dc.plant);
+    flyCursorToSky(dc);
+  }, grabMs);
+}
+
+function freePlantFromCursor(plant) {
+  if (!plant) return;
+  const cur = State.plants[plant.row] && State.plants[plant.row][plant.col];
+  if (!cur || cur !== plant || !plant._cursorGrabbed) return;
+  plant._cursorGrabbed = false;
+  plant.el.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease';
+  plant.el.style.opacity = '1';
+  plant.el.style.transform = 'translateY(0)';
+  setTimeout(() => {
+    if (plant.el) { plant.el.style.transition = ''; plant.el.style.transform = ''; plant.el.style.zIndex = ''; }
+  }, 450);
+  GameLog.log('CURSOR', `Cursor released plant ${plant.type} at [${plant.col},${plant.row}]`);
+  restorePlantSchedule(plant);
+}
+
+function knockDownCursor(dc) {
+  if (dc.dead) return;
+  if (dc.releaseKey) clearTimer(dc.releaseKey);
+  freePlantFromCursor(dc.plant);
+  GameLog.log('CURSOR', `Cursor shot down by catmouse`);
+  spawnParticles(dc.x, dc.y, '#ff5ad0', 10);
+  dc.dead = true;
+  dc.phase = 'gone';
+  const el = dc.el;
+  el.style.transition = 'transform 0.4s ease-in, opacity 0.4s ease-in';
+  requestAnimationFrame(() => {
+    el.style.transform = 'translateY(40px) rotate(60deg) scale(0.7)';
+    el.style.opacity = '0';
+  });
+  setTimeout(() => removeDeathCursor(dc), 420);
+}
+
+function flyCursorToSky(dc) {
+  dc.phase = 'gone';
+  const el = dc.el;
+  const sy = parseFloat(el.style.top) || dc.y;
+  el.style.transition = 'transform 0.7s ease-in, opacity 0.7s ease-in';
+  requestAnimationFrame(() => {
+    el.style.transform = 'translateY(-' + (sy + 200) + 'px) rotate(-35deg)';
+    el.style.opacity = '0';
+  });
+  setTimeout(() => removeDeathCursor(dc), 720);
+}
+
+function removeDeathCursor(dc) {
+  dc.dead = true;
+  if (dc.el) dc.el.remove();
+  State.deathCursors = State.deathCursors.filter(d => d !== dc);
 }
 
 function tickTxtZombie(zombie) {
@@ -3360,7 +3540,7 @@ function updatePeas(dt) {
         if (sweepHi >= zLo && sweepLo <= zHi) {
           let dmg = (pea.fire && !pea.slow) ? 3 : 1;
           if (pea.pirate && pea.boosted) dmg *= 2;
-          damageZombie(z, dmg);
+          damageZombie(z, dmg, { col: pea.srcCol, row: pea.srcRow });
           if (pea.slow) {
             z._slowedUntil = now + 3000;
             if (z.el) z.el.style.filter = 'brightness(0.9) sepia(1) hue-rotate(190deg) saturate(3)';
@@ -3518,6 +3698,7 @@ function scheduleFolderMagnet(plant) {
   State._timers[key] = setInterval(() => {
     if (!State.plants[plant.row][plant.col]) { clearTimer(key); return; }
     if (State.plants[plant.row][plant.col].archived) return;
+    if (State.plants[plant.row][plant.col]._cursorGrabbed) return;
     if (State.paused || State.gameOver) return;
 
     const magnetKey = `${plant.col}_${plant.row}`;

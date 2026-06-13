@@ -662,6 +662,8 @@ function buildPlantBar() {
       document.addEventListener('pointercancel', onEnd, { passive: true });
     });
   });
+
+  updatePlantBar();
 }
 
 function selectPlant(key) {
@@ -822,6 +824,7 @@ function resetGameState() {
   S.zombies = [];
   S.peas    = [];
   S.suns    = [];
+  S.deathCursors = [];
   S.cursik.queue = [];
   S.cursik.busy  = false;
   S.cursik.dragZombieId = null;

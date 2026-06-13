@@ -24,9 +24,15 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-2ecc71?style=flat-square" />
-  <img src="https://img.shields.io/badge/Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" />
-  <img src="https://img.shields.io/badge/Python%203.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/version-1.3.0-2ecc71?style=flat-square" />
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Windows-10/11-0078D4?style=flat-square&logo=windows&logoColor=white" />
+  <img src="https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white" />
+  <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" />
+  <img src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white" />
 </p>
 
 <p align="center">
@@ -153,13 +159,13 @@
 <td align="center" width="120"><img src="static/img/zombies/zombie-petya.png" width="56" /><br><b>Зомби-Петя</b></td>
 <td align="center" width="120"><img src="static/img/zombies/chrome-zombie.png" width="56" /><br><b>Chrome-зомби</b></td>
 <td align="center" width="120"><img src="static/img/zombies/txt-zombie.png" width="56" /><br><b>txt-зомби</b></td>
-<td></td>
+<td align="center" width="120"><img src="static/img/zombies/cursor-zombie.jpg" width="56" /><br><b>Курсор-зомби</b></td>
 </tr>
 <tr>
 <td align="center"><sub>Качает вирус Petya. Прогресс в правом верхнем углу. 100% = BSOD</sub></td>
 <td align="center"><sub>Ищет в Chrome 'Зомби', призывает рандомного на соседнюю клетку</sub></td>
 <td align="center"><sub>Каждые 2 клетки правит характеристику случайного типа зомби (до конца уровня)</sub></td>
-<td></td>
+<td align="center"><sub>При смерти выпускает курсор, который хватает убившее его растение на 4с. Сбивается кошкомышью</sub></td>
 </tr>
 </table>
 

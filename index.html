@@ -373,6 +373,13 @@ if (location.protocol === 'file:') {
           <p data-i18n-html="docs.zombie.txt.stats">ХП: <b>7–10</b></p>
           <p data-i18n="docs.zombie.txt.desc">Каждые 2 клетки правит характеристику случайного типа зомби. Изменения держатся до конца уровня.</p>
         </div>
+        <div class="docs-card">
+          <img src="static/img/zombies/cursor-zombie.jpg" alt="Курсор-зомби" onerror="this.src=''">
+          <h3 data-i18n="docs.zombie.cursor.name">Курсор-зомби</h3>
+          <span class="docs-class" style="color:#b388ff" data-i18n="docs.zombie.cursor.class">Особый / Захват</span>
+          <p data-i18n-html="docs.zombie.cursor.stats">ХП: <b>8–10</b></p>
+          <p data-i18n="docs.zombie.cursor.desc">При смерти выпускает курсор, который летит к убившему его растению и держит его 4 секунды - оно не может атаковать. Курсор можно сбить кошкомышью.</p>
+        </div>
         <div class="docs-card boss-card">
           <img src="static/img/zombies/your-death.jpg" alt="Ваша смерть" onerror="this.src=''">
           <h3 data-i18n="docs.zombie.boss.name">Ваша смерть</h3>
@@ -417,6 +424,14 @@ if (location.protocol === 'file:') {
 
     <div id="suns-layer"></div>
     <div id="particles-layer"></div>
+
+    <div id="cursik-dialogue" class="cursik-dialogue hidden" aria-hidden="true">
+      <img class="cd-portrait" src="static/img/ui/cursik.png" alt="" onerror="this.style.display='none'">
+      <div class="cd-box">
+        <div class="cd-text" id="cd-text"></div>
+        <div class="cd-hint hidden" id="cd-hint" data-i18n="dialogue.hint">▸ далее</div>
+      </div>
+    </div>
 
   </div>
 
@@ -476,6 +491,7 @@ if (location.protocol === 'file:') {
           <option value="petya_zombie" data-i18n="dev.zombie.petya">Зомби-Петя</option>
           <option value="chrome_zombie" data-i18n="dev.zombie.chrome">Chrome-зомби</option>
           <option value="txt_zombie" data-i18n="dev.zombie.txt">txt-зомби</option>
+          <option value="cursor_zombie" data-i18n="dev.zombie.cursor">Курсор-зомби</option>
           <option value="your_death" data-i18n="dev.zombie.boss">Ваша смерть</option>
         </select>
         <select id="dev-zombie-row" class="dev-select">
@@ -719,6 +735,10 @@ if (location.protocol === 'file:') {
       <div class="ed-field">
         <label class="ed-field-label">plants <span class="ed-field-hint">(arsenal)</span></label>
         <div class="ed-plant-grid" id="editor-cfg-plants"></div>
+      </div>
+      <div class="ed-field">
+        <label class="ed-field-label">dialogues <span class="ed-field-hint">(одна фраза на строку)</span></label>
+        <textarea id="editor-cfg-dialogues" rows="4" maxlength="2000" class="ed-input" placeholder="Фраза Курсика 1&#10;Фраза 2&#10;..."></textarea>
       </div>
     </div>
   </aside>

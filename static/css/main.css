@@ -1181,6 +1181,15 @@ button, a { -webkit-user-drag: none; }
   filter: drop-shadow(0 0 6px rgba(255,255,255,0.85)) drop-shadow(0 0 14px rgba(120,200,255,0.55));
   animation: cursor-proj-glitch 0.18s steps(2) infinite;
 }
+.death-cursor {
+  position: absolute;
+  width: 34px; height: 34px;
+  pointer-events: none;
+  z-index: 45;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.85)) drop-shadow(0 0 12px rgba(120,200,255,0.55));
+}
+.death-cursor.asset-missing { background: rgba(120,200,255,0.5); border-radius: 4px; }
 .cursor-projectile-img {
   width: 32px; height: 32px;
   image-rendering: pixelated;
@@ -1538,6 +1547,64 @@ button, a { -webkit-user-drag: none; }
   border: 6px solid transparent;
   border-top-color: rgba(0,0,0,0.85);
 }
+
+.cursik-dialogue {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(0,0,0,0.32);
+  pointer-events: auto;
+}
+.cursik-dialogue.hidden { display: none; }
+.cd-portrait {
+  width: 120px; height: 120px;
+  image-rendering: pixelated;
+  filter: invert(1) drop-shadow(0 6px 14px rgba(0,0,0,0.6));
+  transform: translateX(-120vw);
+  opacity: 0;
+}
+.cd-portrait.cd-in {
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease;
+}
+.cd-portrait.cd-out {
+  transform: translateX(-120vw);
+  opacity: 0;
+  transition: transform 0.45s ease-in, opacity 0.45s ease-in;
+}
+.cd-box {
+  position: relative;
+  min-width: 280px;
+  max-width: 560px;
+  background: rgba(0,0,0,0.88);
+  border: 2px solid #5cb85c;
+  border-radius: 12px;
+  padding: 16px 22px 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 0 1px rgba(92,184,92,0.25);
+}
+.cd-text {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #fff;
+  min-height: 1.5em;
+  text-align: center;
+}
+.cd-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #5cb85c;
+  text-align: right;
+  animation: cd-hint-blink 1s steps(2) infinite;
+}
+.cd-hint.hidden { display: none; }
+@keyframes cd-hint-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 #hud-top {
   position: fixed;
