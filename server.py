@@ -774,6 +774,22 @@ class GameHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json({"ok": False, "error": str(e)})
             return
+        elif parsed.path == "/api/export_wave":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length) if length > 0 else b"{}"
+            try:
+                data = json.loads(body) if body else {}
+                fname = data.get("filename") or ""
+                if IS_ANDROID:
+                    result = _export_wave_android(fname)
+                else:
+                    result = _export_wave_desktop(fname)
+                resp = {"ok": True}
+                resp.update(result or {})
+                self._json(resp)
+            except Exception as e:
+                self._json({"ok": False, "error": str(e)})
+            return
         elif parsed.path == "/api/heartbeat":
             global _last_heartbeat, _heartbeat_started
             _last_heartbeat = time.time()
@@ -1096,6 +1112,125 @@ def _share_log_android():
         last_err = e
 
     raise RuntimeError(f"no writable location: {last_err}")
+
+
+def _resolve_wave_path(filename):
+    raw = str(filename or "").strip()
+    stem = re.sub(r"[^a-zA-Z0-9_\-]", "_", raw)[:48]
+    if not stem:
+        raise RuntimeError("invalid_filename")
+    path = (BASE_DIR / "custom_waves" / (stem + ".json")).resolve()
+    waves_dir = (BASE_DIR / "custom_waves").resolve()
+    if path.parent != waves_dir or not path.exists():
+        raise RuntimeError("not_found")
+    return path, stem + ".json"
+
+
+def _export_wave_android(filename):
+    src, fname = _resolve_wave_path(filename)
+    try:
+        from jnius import autoclass
+        PA = autoclass('org.kivy.android.PythonActivity')
+        activity = PA.mActivity
+        Intent = autoclass('android.content.Intent')
+        Uri = autoclass('android.net.Uri')
+        File = autoclass('java.io.File')
+
+        target = src
+        try:
+            ext = activity.getExternalFilesDir(None)
+            if ext:
+                ext_dir = Path(ext.getAbsolutePath()) / "waves"
+                ext_dir.mkdir(parents=True, exist_ok=True)
+                target = ext_dir / fname
+                import shutil
+                shutil.copyfile(src, target)
+        except Exception:
+            pass
+
+        authority = activity.getPackageName() + ".fileprovider"
+        f = File(str(target))
+        try:
+            FileProvider = autoclass('androidx.core.content.FileProvider')
+            uri = FileProvider.getUriForFile(activity, authority, f)
+        except Exception:
+            uri = Uri.fromFile(f)
+
+        intent = Intent(Intent.ACTION_SEND)
+        intent.setType("application/json")
+        intent.putExtra(Intent.EXTRA_STREAM, uri)
+        intent.putExtra(Intent.EXTRA_SUBJECT, fname)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        chooser = Intent.createChooser(intent, "Export wave")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        activity.startActivity(chooser)
+        return {"method": "intent"}
+    except Exception as e:
+        print(f"[EXPORT] jnius share failed, using fallback: {e}", flush=True)
+
+    import shutil
+    candidates = []
+    ext_storage = os.environ.get("EXTERNAL_STORAGE")
+    if ext_storage:
+        candidates.append(Path(ext_storage) / "Download")
+    candidates.append(Path("/storage/emulated/0/Download"))
+    candidates.append(Path("/sdcard/Download"))
+    if ext_storage:
+        candidates.append(Path(ext_storage))
+
+    last_err = None
+    for c in candidates:
+        try:
+            c.mkdir(parents=True, exist_ok=True)
+            target = c / fname
+            shutil.copyfile(src, target)
+            print(f"[EXPORT] saved to {target}", flush=True)
+            return {"method": "copy", "path": str(target)}
+        except Exception as e:
+            last_err = e
+            continue
+
+    try:
+        priv_dir = Path(os.environ.get('ANDROID_PRIVATE', '/tmp')) / "shared"
+        priv_dir.mkdir(parents=True, exist_ok=True)
+        target = priv_dir / fname
+        shutil.copyfile(src, target)
+        return {"method": "private", "path": str(target)}
+    except Exception as e:
+        last_err = e
+
+    raise RuntimeError(f"no writable location: {last_err}")
+
+
+def _reveal_in_file_manager(path):
+    p = str(path)
+    try:
+        if IS_WINDOWS:
+            subprocess.Popen(["explorer", "/select,", p])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", p])
+        elif IS_LINUX:
+            subprocess.Popen(["xdg-open", str(Path(p).parent)],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"[EXPORT] reveal failed: {e}", flush=True)
+
+
+def _export_wave_desktop(filename):
+    src, fname = _resolve_wave_path(filename)
+    downloads = Path.home() / "Downloads"
+    try:
+        downloads.mkdir(parents=True, exist_ok=True)
+        dest = downloads / fname
+    except Exception:
+        dest = Path.home() / fname
+
+    import shutil
+    shutil.copyfile(src, dest)
+    print(f"[EXPORT] saved to {dest}", flush=True)
+    _reveal_in_file_manager(dest)
+    return {"path": str(dest)}
 
 
 _android_perms_event = threading.Event()

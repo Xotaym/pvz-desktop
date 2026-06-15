@@ -1831,6 +1831,14 @@ button, a { -webkit-user-drag: none; }
   justify-content: space-between;
   gap: 14px;
 }
+.settings-group-col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.settings-export-select {
+  width: 100%;
+}
 .settings-label {
   font-family: var(--font-pixel);
   font-size: 9px;

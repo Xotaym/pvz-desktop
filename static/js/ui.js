@@ -1309,6 +1309,45 @@ function initSettings() {
     });
   }
 
+  const exportSelect = document.getElementById('settings-export-select');
+  const exportBtn = document.getElementById('settings-export-btn');
+  const exportStatus = document.getElementById('settings-export-status');
+
+  function setExportStatus(text) {
+    if (!exportStatus) return;
+    exportStatus.textContent = text || '';
+    exportStatus.style.display = text ? 'block' : 'none';
+  }
+
+  if (exportSelect && exportBtn) {
+    exportBtn.addEventListener('click', async () => {
+      const fname = exportSelect.value;
+      if (!fname) { setExportStatus(Lang.t('settings.export_wave.none')); return; }
+      setExportStatus(Lang.t('settings.export_wave.working'));
+      try {
+        const res = await fetch('/api/export_wave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: fname }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.ok) {
+          if (data.method === 'intent') {
+            setExportStatus(Lang.t('settings.export_wave.shared'));
+          } else if (data.path) {
+            setExportStatus(Lang.t('settings.export_wave.saved') + ': ' + data.path);
+          } else {
+            setExportStatus(Lang.t('settings.export_wave.saved'));
+          }
+        } else {
+          setExportStatus(Lang.t('settings.export_wave.failed') + (data.error ? ': ' + data.error : ''));
+        }
+      } catch (e) {
+        setExportStatus(Lang.t('settings.export_wave.failed') + ': ' + e.message);
+      }
+    });
+  }
+
   const confirmLogsModal = document.getElementById('confirm-logs-modal');
   clearLogsBtn.addEventListener('click', () => {
     confirmLogsModal.classList.remove('hidden');
@@ -1365,9 +1404,41 @@ function updateGamemodeLabels(el) {
   });
 }
 
+function populateExportSelect() {
+  var sel = document.getElementById('settings-export-select');
+  if (!sel) return;
+  var status = document.getElementById('settings-export-status');
+  if (status) status.style.display = 'none';
+  fetch('/api/custom_waves').then(function (r) { return r.json(); }).then(function (data) {
+    var waves = (data && data.waves) || [];
+    sel.innerHTML = '';
+    if (!waves.length) {
+      var opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = Lang.t('settings.export_wave.empty');
+      sel.appendChild(opt);
+      sel.disabled = true;
+      var btn = document.getElementById('settings-export-btn');
+      if (btn) btn.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    var btn2 = document.getElementById('settings-export-btn');
+    if (btn2) btn2.disabled = false;
+    waves.forEach(function (w) {
+      var fname = w._filename || w.name || 'untitled';
+      var opt = document.createElement('option');
+      opt.value = fname;
+      opt.textContent = (w.name || fname) + ' (' + fname + '.json)';
+      sel.appendChild(opt);
+    });
+  }).catch(function () {});
+}
+
 function openSettings(from) {
   settingsOpenedFrom = from;
   document.getElementById('settings-modal').classList.remove('hidden');
+  populateExportSelect();
 }
 
 function closeSettings() {

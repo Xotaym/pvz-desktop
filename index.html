@@ -921,6 +921,17 @@ if (location.protocol === 'file:') {
       </label>
     </div>
 
+    <div class="settings-divider"></div>
+
+    <div class="settings-group settings-group-col">
+      <label class="settings-label" data-i18n="settings.export_wave">📤 Экспорт волны</label>
+      <select id="settings-export-select" class="dev-select settings-export-select"></select>
+      <button class="pause-btn small" id="settings-export-btn" data-i18n="settings.export_wave.btn">⬇ Экспортировать .json</button>
+      <p id="settings-export-status" class="settings-hint" style="display:none"></p>
+    </div>
+
+    <div class="settings-divider"></div>
+
     <button class="pause-btn small" id="settings-open-logs" data-i18n="settings.open_logs">📂 Открыть логи</button>
     <button class="pause-btn small dev-only-btn" id="settings-clear-logs" style="display:none" data-i18n="settings.clear_logs">Очистить логи</button>
 
