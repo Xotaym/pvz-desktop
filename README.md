@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.3.0-2ecc71?style=flat-square" />
+  <img src="https://img.shields.io/badge/version-1.3.1-2ecc71?style=flat-square" />
   <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
 </p>
 
